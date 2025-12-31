@@ -1,0 +1,103 @@
+import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+
+import '../../routes/routes.dart';
+import '../../utils/app_constants.dart';
+import '../../utils/colors.dart';
+import '../../utils/dimensions.dart';
+import '../../widgets/custom_button.dart';
+import '../../widgets/custom_textfield.dart';
+
+class ForgottenPassword extends StatefulWidget {
+  const ForgottenPassword({super.key});
+
+  @override
+  State<ForgottenPassword> createState() => _ForgottenPasswordState();
+}
+
+class _ForgottenPasswordState extends State<ForgottenPassword> {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Container(
+        height: Dimensions.screenHeight,
+        width: Dimensions.screenWidth,
+        padding: EdgeInsets.symmetric(
+          horizontal: Dimensions.width20,
+          vertical: Dimensions.height20,
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Image.asset(AppConstants.getPngAsset('forgot-pass')),
+            SizedBox(height: Dimensions.height30),
+            Text(
+              'Forgotten Password',
+              style: TextStyle(
+                fontSize: Dimensions.font30 * 1.2,
+                fontWeight: FontWeight.w600,
+                color: AppColors.accentColor,
+              ),
+            ),
+            Text(
+              'If there is an existing account attached to provided mail, a reset link will be sent ',
+              style: TextStyle(
+                fontSize: Dimensions.font15,
+                fontWeight: FontWeight.w300,
+              ),
+            ),
+            SizedBox(height: Dimensions.height20),
+            Text(
+              'Email Address',
+              style: TextStyle(fontSize: Dimensions.font17),
+            ),
+            SizedBox(height: Dimensions.height5),
+            CustomTextField(hintText: 'abc@gmail.com'),
+            SizedBox(height: Dimensions.height20),
+            CustomButton(onPressed: () {
+              showModalBottomSheet(
+                context: context,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(Dimensions.radius20)),
+                ),
+                builder: (context) {
+                  return Container(
+                    width: Dimensions.screenWidth,
+                    height: Dimensions.screenHeight / 2.2,
+                    padding: EdgeInsets.only(bottom: Dimensions.height20),
+
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Input OTP',
+                          textAlign: TextAlign.left,
+                          style: TextStyle(
+                            fontSize: Dimensions.font30 * 1.2,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.accentColor,
+                          ),
+                        ),
+                        Text(
+                          'Input OTP sent to Provided Email address',
+                          style: TextStyle(
+                            fontSize: Dimensions.font15,
+                            fontWeight: FontWeight.w300,
+                          ),
+                        ),
+                        SizedBox(height: Dimensions.height20),
+                      ],
+                    ),
+                  );
+                },
+              );
+            }, text: 'REQUEST LINK'),
+
+          ],
+        ),
+      ),
+    );
+  }
+}

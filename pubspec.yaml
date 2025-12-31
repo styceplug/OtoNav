@@ -1,0 +1,97 @@
+name: otonav
+description: "A new Flutter project."
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.9.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+
+  cupertino_icons: ^1.0.8
+  get: ^4.7.2
+  shared_preferences: ^2.5.3
+  image_picker: ^1.1.2
+  marquee: ^2.3.0
+  dotted_border: ^3.0.1
+  icons_launcher: ^3.0.1
+  package_info_plus: ^8.3.0
+  connectivity_plus: ^6.0.5
+  iconsax: ^0.0.8
+  mime: ^1.0.6
+  flutter_image_compress: ^2.4.0
+  path_provider: ^2.1.5
+  intl: ^0.20.2
+  url_launcher: ^6.3.1
+  firebase_core: ^3.15.1
+  firebase_messaging: ^15.2.9
+  flutter_local_notifications: ^19.4.1
+  file_picker: ^10.2.0
+  timeago: ^3.7.1
+  fluttertoast: ^8.2.12
+  flutter_html: ^3.0.0-beta.2
+  webview_flutter: ^4.7.0
+  permission_handler: ^11.1.0
+  printing: ^5.12.0
+  pdf: ^3.11.3
+  share_plus: ^11.1.0
+  sms_autofill: ^2.4.1
+  flutter_rating_bar: ^4.0.1
+  cached_network_image: ^3.4.1
+  flutter_otp_text_field: ^1.5.1+1
+  geolocator: ^14.0.2
+  geocoding: ^4.0.0
+  google_maps_flutter: ^2.14.0
+
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+icons_launcher:
+  image_path: "assets/images/logo.png"
+  platforms:
+    android:
+      enable: true
+    ios:
+      enable: true
+
+
+
+
+
+  flutter_lints: ^5.0.0
+
+
+flutter:
+
+
+  uses-material-design: true
+
+
+  assets:
+    - assets/images/
+    - assets/gifs/
+
+
+
+  fonts:
+    - family: Poppins
+      fonts:
+        - asset: assets/fonts/Poppins-Regular.otf
+          weight: 400
+        - asset: assets/fonts/Poppins-Medium.otf
+          weight: 500
+        - asset: assets/fonts/Poppins-SemiBold.otf
+          weight: 600
+        - asset: assets/fonts/Poppins-Bold.otf
+          weight: 700
+
+
+
+
+  # For details regarding fonts from package dependencies,
+  # see https://flutter.dev/to/font-from-package
