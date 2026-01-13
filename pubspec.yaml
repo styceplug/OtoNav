@@ -52,12 +52,13 @@ dev_dependencies:
     sdk: flutter
 
 icons_launcher:
-  image_path: "assets/images/logo.png"
+  image_path: "assets/images/otonav-logo.png"
   platforms:
     android:
       enable: true
     ios:
       enable: true
+
 
 
 

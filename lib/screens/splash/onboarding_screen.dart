@@ -118,7 +118,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         Get.toNamed(AppRoutes.getStartedScreen);
                       }, text: 'Get Started'),
                       SizedBox(height: Dimensions.height5),
-                      Row(
+                     /* Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(
@@ -130,7 +130,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                             style: TextStyle(color: AppColors.accentColor),
                           ),
                         ],
-                      ),
+                      ),*/
                     ],
                   ),
                 ),

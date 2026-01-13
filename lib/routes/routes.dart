@@ -6,6 +6,8 @@ import 'package:otonav/screens/auth/rider/rider_login.dart';
 import 'package:otonav/screens/auth/verify_otp.dart';
 import 'package:otonav/screens/in_app/customer/location_screen.dart';
 import 'package:otonav/screens/in_app/customer/tracking_screen.dart';
+import 'package:otonav/screens/in_app/riders/order_completed.dart';
+import 'package:otonav/screens/in_app/riders/tracking_page.dart';
 import 'package:otonav/screens/pages/rider_pages/rider_home_screen.dart';
 import 'package:otonav/screens/splash/get_started.dart';
 import 'package:otonav/screens/splash/no_internet_screen.dart';
@@ -44,6 +46,9 @@ class AppRoutes {
 
   //rider
   static const String riderHomeScreen = '/rider-home-screen';
+  static const String riderTrackingScreen = '/rider-tracking-screen';
+  static const String orderCompletedPage = '/order-completed-page';
+
 
 
 
@@ -83,6 +88,16 @@ class AppRoutes {
       page: () {
         return const RiderHomeScreen();
       },),
+    GetPage(
+      name: riderTrackingScreen,
+      page: () {
+        return const TrackingPage();
+      },),
+    GetPage(
+      name: orderCompletedPage,
+      page: () {
+        return const OrderCompleted();
+      },),
 
 
 
@@ -117,7 +132,7 @@ class AppRoutes {
     GetPage(
       name: verifyProfileScreen,
       page: () {
-        return const VerifyOtp();
+        return VerifyOtp();
       },
     ),
 

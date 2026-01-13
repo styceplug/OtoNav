@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:otonav/controllers/auth_controller.dart';
 
 import '../../routes/routes.dart';
 import '../../utils/app_constants.dart';
@@ -16,6 +17,8 @@ class ForgottenPassword extends StatefulWidget {
 }
 
 class _ForgottenPasswordState extends State<ForgottenPassword> {
+  AuthController authController = Get.find<AuthController>();
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -53,48 +56,18 @@ class _ForgottenPasswordState extends State<ForgottenPassword> {
               style: TextStyle(fontSize: Dimensions.font17),
             ),
             SizedBox(height: Dimensions.height5),
-            CustomTextField(hintText: 'abc@gmail.com'),
+            CustomTextField(
+              hintText: 'abc@gmail.com',
+              controller: authController.emailController,
+              keyboardType: TextInputType.emailAddress,
+            ),
             SizedBox(height: Dimensions.height20),
-            CustomButton(onPressed: () {
-              showModalBottomSheet(
-                context: context,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(Dimensions.radius20)),
-                ),
-                builder: (context) {
-                  return Container(
-                    width: Dimensions.screenWidth,
-                    height: Dimensions.screenHeight / 2.2,
-                    padding: EdgeInsets.only(bottom: Dimensions.height20),
-
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Input OTP',
-                          textAlign: TextAlign.left,
-                          style: TextStyle(
-                            fontSize: Dimensions.font30 * 1.2,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.accentColor,
-                          ),
-                        ),
-                        Text(
-                          'Input OTP sent to Provided Email address',
-                          style: TextStyle(
-                            fontSize: Dimensions.font15,
-                            fontWeight: FontWeight.w300,
-                          ),
-                        ),
-                        SizedBox(height: Dimensions.height20),
-                      ],
-                    ),
-                  );
-                },
-              );
-            }, text: 'REQUEST LINK'),
-
+            CustomButton(
+              onPressed: () {
+                authController.resetPassword();
+              },
+              text: 'REQUEST LINK',
+            ),
           ],
         ),
       ),

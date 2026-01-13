@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
 
+import '../routes/routes.dart';
 import '../utils/colors.dart';
 import '../utils/dimensions.dart';
 import 'custom_button.dart';
@@ -214,21 +216,21 @@ class _RiderOrderCardState extends State<RiderOrderCard>
                             mainAxisAlignment: MainAxisAlignment.spaceAround,
                             children: [
                               Text(
-                                'Delivery Location',
+                                'Pick-up Location',
                                 style: TextStyle(
                                   fontSize: Dimensions.font16,
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
                               Text(
-                                '24B Gold City Estate, Lugbe',
+                                'ABC Phones',
                                 style: TextStyle(
                                   fontSize: Dimensions.font14,
                                   fontWeight: FontWeight.w300,
                                 ),
                               ),
                               Text(
-                                'Near Arcade Lane',
+                                'Bannex Plaza',
                                 style: TextStyle(
                                   fontSize: Dimensions.font13,
                                   fontWeight: FontWeight.w300,
@@ -242,6 +244,10 @@ class _RiderOrderCardState extends State<RiderOrderCard>
                     ],
                   ),
                 ),
+                SizedBox(height: Dimensions.height20),
+                CustomButton(text: 'Start Delivery', onPressed: (){
+                  Get.toNamed(AppRoutes.riderTrackingScreen);
+                })
               ],
             ),
             crossFadeState: _isExpanded

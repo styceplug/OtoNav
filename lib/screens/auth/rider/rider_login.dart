@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:otonav/controllers/auth_controller.dart';
 import 'package:otonav/utils/dimensions.dart';
 import 'package:otonav/widgets/custom_button.dart';
 
@@ -16,6 +17,20 @@ class RiderLoginScreen extends StatefulWidget {
 }
 
 class _RiderLoginScreenState extends State<RiderLoginScreen> {
+
+  AuthController authController = Get.find<AuthController>();
+  bool isPasswordVisible = false;
+
+  void togglePassVisibility() {
+    setState(() {
+      isPasswordVisible = !isPasswordVisible;
+    });
+  }
+
+  void login(){
+    authController.login();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -46,11 +61,22 @@ class _RiderLoginScreenState extends State<RiderLoginScreen> {
               style: TextStyle(fontSize: Dimensions.font17),
             ),
             SizedBox(height: Dimensions.height5),
-            CustomTextField(hintText: 'abc@gmail.com'),
+            CustomTextField(hintText: 'abc@gmail.com',controller: authController.emailController),
             SizedBox(height: Dimensions.height20),
             Text('Password', style: TextStyle(fontSize: Dimensions.font17)),
             SizedBox(height: Dimensions.height5),
-            CustomTextField(hintText: 'password'),
+            CustomTextField(
+              hintText: 'password',
+              controller: authController.passwordController,
+              maxLines: 1,
+              obscureText: isPasswordVisible,
+              suffixIcon: InkWell(
+                onTap: togglePassVisibility,
+                child: isPasswordVisible
+                    ? Icon(Icons.visibility)
+                    : Icon(Icons.visibility_off),
+              ),
+            ),
             SizedBox(height: Dimensions.height20),
             CustomButton(text: 'LOGIN', onPressed: (){
               Get.offAllNamed(AppRoutes.riderHomeScreen);

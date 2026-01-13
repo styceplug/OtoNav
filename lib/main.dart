@@ -42,7 +42,7 @@ class MyApp extends StatelessWidget {
             ),
 
             getPages: AppRoutes.routes,
-            initialRoute: AppRoutes.riderHomeScreen,
+            initialRoute: AppRoutes.splashScreen,
             builder: (context, child) {
               final loaderController = Get.find<GlobalLoaderController>();
               return Obx(() {

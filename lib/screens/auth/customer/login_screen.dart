@@ -1,5 +1,8 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:otonav/controllers/auth_controller.dart';
 import 'package:otonav/utils/app_constants.dart';
 import 'package:otonav/utils/colors.dart';
 import 'package:otonav/utils/dimensions.dart';
@@ -16,6 +19,19 @@ class CustomerLoginScreen extends StatefulWidget {
 }
 
 class _CustomerLoginScreenState extends State<CustomerLoginScreen> {
+  AuthController authController = Get.find<AuthController>();
+  bool isPasswordVisible = false;
+
+  void togglePassVisibility() {
+    setState(() {
+      isPasswordVisible = !isPasswordVisible;
+    });
+  }
+
+  void login() {
+    authController.login();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -53,16 +69,32 @@ class _CustomerLoginScreenState extends State<CustomerLoginScreen> {
               style: TextStyle(fontSize: Dimensions.font17),
             ),
             SizedBox(height: Dimensions.height5),
-            CustomTextField(hintText: 'abc@gmail.com'),
+            CustomTextField(
+              hintText: 'abc@gmail.com',
+              controller: authController.emailController,
+              keyboardType: TextInputType.emailAddress,
+              maxLines: 1,
+            ),
             SizedBox(height: Dimensions.height20),
             Text('Password', style: TextStyle(fontSize: Dimensions.font17)),
             SizedBox(height: Dimensions.height5),
-            CustomTextField(hintText: 'password'),
+            CustomTextField(
+              hintText: 'password',
+              controller: authController.passwordController,
+              maxLines: 1,
+              obscureText: isPasswordVisible,
+              suffixIcon: InkWell(
+                onTap: togglePassVisibility,
+                child: isPasswordVisible
+                    ? Icon(Icons.visibility)
+                    : Icon(Icons.visibility_off),
+              ),
+            ),
             SizedBox(height: Dimensions.height10),
             Align(
               alignment: AlignmentGeometry.centerRight,
               child: InkWell(
-                onTap: (){
+                onTap: () {
                   Get.toNamed(AppRoutes.forgotPasswordScreen);
                 },
                 child: Text(
@@ -76,14 +108,12 @@ class _CustomerLoginScreenState extends State<CustomerLoginScreen> {
               ),
             ),
             SizedBox(height: Dimensions.height20),
-            CustomButton(onPressed: () {
-              Get.toNamed(AppRoutes.verifyProfileScreen);
-            }, text: 'LOGIN'),
+            CustomButton(onPressed: login, text: 'LOGIN'),
             SizedBox(height: Dimensions.height20),
             Align(
               alignment: Alignment.center,
               child: InkWell(
-                onTap: (){
+                onTap: () {
                   Get.toNamed(AppRoutes.customerRegisterScreen);
                 },
                 child: Text(
