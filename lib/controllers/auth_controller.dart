@@ -9,6 +9,8 @@ import '../data/repo/auth_repo.dart';
 import '../model/user_model.dart';
 import '../routes/routes.dart';
 
+
+
 class AuthController extends GetxController {
   final AuthRepo authRepo;
 
@@ -22,42 +24,49 @@ class AuthController extends GetxController {
   GlobalLoaderController loader = Get.find<GlobalLoaderController>();
 
 
+  Future<void> resetPassword() async {
+    String email = emailController.text.trim();
 
-  Future<void> resetPassword()async{
-    String email = Get.arguments ?? emailController.text.trim();
 
     if (email.isEmpty) {
-      CustomSnackBar.failure(message: "Error: No email address found. Please register again.");
+      CustomSnackBar.failure(message: "Please enter your email address.");
       return;
+    }
+
+    loader.showLoader();
+    Response response = await authRepo.resetPassword(email);
+    loader.hideLoader();
+
+    if (response.statusCode == 200 && response.body['success'] == true) {
+      CustomSnackBar.success(
+          message: response.body['message'] ?? "OTP sent to your email.");
+
+      Get.toNamed(AppRoutes.getStartedScreen);
+
     } else {
-      loader.showLoader();
-      Response response = await authRepo.resetPassword(email);
-      loader.hideLoader();
-      if (response.statusCode == 200 && response.body['success'] == true) {
-        CustomSnackBar.success(message: response.body['message'] ?? "OTP sent to your email.");
-      } else {
-        String errorMsg = _getErrorMessage(response);
-        CustomSnackBar.failure(message: errorMsg);
-        Get.offAllNamed(AppRoutes.customerLoginScreen);
-      }
+      String errorMsg = _getErrorMessage(response);
+      CustomSnackBar.failure(message: errorMsg);
     }
   }
 
   Future<void> resendOtp() async {
     String email = Get.arguments ?? emailController.text.trim();
+
     if (email.isEmpty) {
-      CustomSnackBar.failure(message: "Error: No email address found. Please register again.");
+      CustomSnackBar.failure(message: "Error: No email found to resend OTP.");
       return;
+    }
+
+    loader.showLoader();
+    Response response = await authRepo.resendOtp(email);
+    loader.hideLoader();
+
+    if (response.statusCode == 200 && response.body['success'] == true) {
+      CustomSnackBar.success(
+          message: response.body['message'] ?? "OTP resent successfully.");
     } else {
-      loader.showLoader();
-      Response response = await authRepo.resendOtp(email);
-      loader.hideLoader();
-      if (response.statusCode == 200 && response.body['success'] == true) {
-        CustomSnackBar.success(message: response.body['message'] ?? "OTP sent to your email.");
-      } else {
-        String errorMsg = _getErrorMessage(response);
-        CustomSnackBar.failure(message: errorMsg);
-      }
+      String errorMsg = _getErrorMessage(response);
+      CustomSnackBar.failure(message: errorMsg);
     }
   }
 
@@ -65,7 +74,7 @@ class AuthController extends GetxController {
     String email = Get.arguments ?? emailController.text.trim();
 
     if (email.isEmpty) {
-      CustomSnackBar.failure(message: "Error: No email address found. Please register again.");
+      CustomSnackBar.failure(message: "Error: No email address found.");
       return;
     }
 
@@ -79,7 +88,8 @@ class AuthController extends GetxController {
     loader.hideLoader();
 
     if (response.statusCode == 200 && response.body['success'] == true) {
-      CustomSnackBar.success(message: response.body['message'] ?? "Email verified! Please login.");
+      CustomSnackBar.success(
+          message: response.body['message'] ?? "Email verified! Please login.");
 
       Get.offAllNamed(AppRoutes.customerLoginScreen);
     } else {
@@ -94,29 +104,17 @@ class AuthController extends GetxController {
     String password = passwordController.text.trim();
     String phoneNumber = phoneController.text.trim();
 
-    if (name.isEmpty ||
-        email.isEmpty ||
-        password.isEmpty ||
-        phoneNumber.isEmpty) {
-      CustomSnackBar.failure(
-        message: "All fields are required to create an account.",
-      );
+    if (name.isEmpty || email.isEmpty || password.isEmpty || phoneNumber.isEmpty) {
+      CustomSnackBar.failure(message: "All fields are required.");
       return;
     }
 
     loader.showLoader();
-    Response response = await authRepo.registerCustomer(
-      name,
-      email,
-      password,
-      phoneNumber,
-    );
+    Response response = await authRepo.registerCustomer(name, email, password, phoneNumber);
     loader.hideLoader();
 
     if (response.statusCode == 200 && response.body['success'] == true) {
-      RegisterResponse registerResponse = RegisterResponse.fromJson(
-        response.body,
-      );
+      RegisterResponse registerResponse = RegisterResponse.fromJson(response.body);
 
       CustomSnackBar.success(
         message: registerResponse.message ?? "Registration Successful",
@@ -141,39 +139,47 @@ class AuthController extends GetxController {
     Response response = await authRepo.login(email, password);
     loader.hideLoader();
 
-    // 1. SUCCESS CASE
     if (response.statusCode == 200 && response.body['success'] == true) {
       LoginResponse loginResponse = LoginResponse.fromJson(response.body);
 
-      if (loginResponse.data != null) {
-        String token = loginResponse.data!.accessToken!;
-        String role = loginResponse.data!.user!.role ?? "customer";
+      String accessToken = loginResponse.data!.accessToken!;
+      String role = loginResponse.data!.user!.role ?? "customer";
 
-        await saveUserSession(token, role);
+      String? refreshToken;
+      String? rawCookie = response.headers?['set-cookie'];
 
-        if (loginResponse.data!.requiresRegistrationCompletion == true) {
-          Get.toNamed(AppRoutes.verifyProfileScreen);
-        } else {
-          if (role == 'rider') {
-            Get.offAllNamed(AppRoutes.riderHomeScreen);
+      if (rawCookie != null) {
+        int index = rawCookie.indexOf('refreshToken=');
+        if (index != -1) {
+          String temp = rawCookie.substring(index + 13);
+          if (temp.contains(';')) {
+            refreshToken = temp.split(';')[0];
           } else {
-            Get.offAllNamed(AppRoutes.customerHomeScreen);
+            refreshToken = temp;
           }
         }
-        CustomSnackBar.success(message: "Welcome back! Login successful.");
       }
+
+      await saveUserSession(accessToken, refreshToken ?? "", role);
+
+      if (loginResponse.data!.requiresRegistrationCompletion == true) {
+        Get.toNamed(AppRoutes.verifyProfileScreen);
+      } else {
+        if (role == 'rider') {
+          Get.offAllNamed(AppRoutes.riderHomeScreen);
+        } else {
+          Get.offAllNamed(AppRoutes.customerHomeScreen);
+        }
+      }
+      CustomSnackBar.success(message: "Welcome back! Login successful.");
     }
-    // 2. ERROR HANDLING
+
     else {
       String errorMsg = _getErrorMessage(response);
 
-
       if (errorMsg.toLowerCase().contains("verify your email")) {
-
         CustomSnackBar.success(message: "Verification required. OTP sent to your email.");
-
         Get.toNamed(AppRoutes.verifyProfileScreen, arguments: email);
-
       } else if (response.statusCode == 401) {
         CustomSnackBar.failure(message: "Incorrect email or password.");
       } else {
@@ -183,12 +189,10 @@ class AuthController extends GetxController {
   }
 
   String _getErrorMessage(Response response) {
-    // 1. No Internet / Connection Timeout
     if (response.status.connectionError) {
       return "No internet connection. Please check your network.";
     }
 
-    // 2. Backend provided a specific message in the body (Preferred)
     try {
       if (response.body != null && response.body is Map) {
         if (response.body['message'] != null) {
@@ -196,10 +200,9 @@ class AuthController extends GetxController {
         }
       }
     } catch (e) {
-      // Parsing failed, fall through
+      // Parsing failed
     }
 
-    // 3. Fallback based on Status Code
     switch (response.statusCode) {
       case 400:
         return "Invalid request. Please check your input.";
@@ -214,9 +217,12 @@ class AuthController extends GetxController {
     }
   }
 
-  Future<void> saveUserSession(String token, String role) async {
+  Future<void> saveUserSession(String accessToken, String refreshToken, String role) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(AppConstants.authToken, token);
+    await prefs.setString(AppConstants.authToken, accessToken);
     await prefs.setString(AppConstants.userRole, role);
+    if (refreshToken.isNotEmpty) {
+      await prefs.setString(AppConstants.refreshToken, refreshToken);
+    }
   }
 }

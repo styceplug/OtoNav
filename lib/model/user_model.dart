@@ -46,10 +46,12 @@ class User {
   String? id;
   String? email;
   String? name;
-  String? role; // e.g., 'customer', 'rider', 'owner'
+  String? role;
+  String? phoneNumber;
   String? orgId;
   bool? emailVerified;
   bool? registrationCompleted;
+  String? createdAt;
 
   User({
     this.id,
@@ -59,6 +61,8 @@ class User {
     this.orgId,
     this.emailVerified,
     this.registrationCompleted,
+    this.phoneNumber,
+    this.createdAt,
   });
 
   User.fromJson(Map<String, dynamic> json) {
@@ -69,5 +73,7 @@ class User {
     orgId = json['orgId'];
     emailVerified = json['emailVerified'];
     registrationCompleted = json['registrationCompleted'];
+    phoneNumber = json['phoneNumber'];
+    createdAt = json['createdAt'];
   }
 }

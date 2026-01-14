@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:otonav/controllers/app_controller.dart';
 import '../../routes/routes.dart';
 import '../../utils/app_constants.dart';
 import '../../utils/colors.dart';
@@ -15,10 +16,15 @@ class SplashScreen extends StatefulWidget {
 
 class _SplashScreenState extends State<SplashScreen>
     with SingleTickerProviderStateMixin {
+
+
+  AppController appController = Get.find<AppController>();
+
+
   @override
   void initState() {
     Future.delayed(const Duration(seconds: 3), () {
-      Get.offAllNamed(AppRoutes.onboardingScreen);
+      appController.initializeApp();
     });
     super.initState();
   }

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import 'package:get/get.dart';
 import 'package:otonav/data/api/api_client.dart';
+import 'package:otonav/data/repo/auth_repo.dart';
 import 'package:otonav/screens/pages/rider_pages/screens/rider_home_page.dart';
 import 'package:otonav/screens/pages/user_pages/screens/orders.dart';
 import 'package:otonav/screens/pages/user_pages/screens/profile.dart';
@@ -18,9 +19,14 @@ import '../utils/dimensions.dart';
 
 class AppController extends GetxController {
   final AppRepo appRepo;
+  final AuthRepo authRepo;
   final ApiClient apiClient;
 
-  AppController({required this.appRepo,required this.apiClient});
+  AppController({
+    required this.appRepo,
+    required this.apiClient,
+    required this.authRepo,
+  });
 
   Rx<ThemeMode> themeMode = Rx<ThemeMode>(ThemeMode.system);
 
@@ -42,7 +48,7 @@ class AppController extends GetxController {
 
   @override
   void onInit() {
-    initializeApp();
+    // initializeApp();
     super.onInit();
   }
 
@@ -57,21 +63,73 @@ class AppController extends GetxController {
       return;
     }
 
-    String? token = appRepo.sharedPreferences.getString(AppConstants.authToken);
+    final prefs = apiClient.sharedPreferences;
+    String? accessToken = prefs.getString(AppConstants.authToken);
+    String? refreshToken = prefs.getString(AppConstants.refreshToken);
+    String? role = prefs.getString(AppConstants.userRole);
 
-    if (token != null && token.isNotEmpty) {
-      print("Token found. Verifying session...");
-      apiClient.updateHeader(token);
-      // await authController.getUserProfile();
-      // String? firebaseToken = await FirebaseMessaging.instance.getToken();
-      // if (firebaseToken != null) {
-      //   await saveDeviceToken(firebaseToken);
-      // }
+    if (accessToken != null && accessToken.isNotEmpty) {
+      apiClient.updateHeader(accessToken);
 
+      // 2. VERIFY TOKEN with Backend
+      print("🔄 Verifying Session...");
+      Response profileResponse = await authRepo.getProfile();
+
+      if (profileResponse.statusCode == 200) {
+        print("✅ Session Valid");
+        _navigateHome(role);
+      } else {
+        print("⚠️ Session Expired (401). Attempting Refresh...");
+
+        // 3. ATTEMPT REFRESH
+        if (refreshToken != null && refreshToken.isNotEmpty) {
+          bool refreshed = await _tryTokenRefresh(refreshToken);
+          if (refreshed) {
+            _navigateHome(role);
+          } else {
+            _logout();
+          }
+        } else {
+          _logout();
+        }
+      }
     } else {
-      print("No token found -> Get Started");
-      Get.offAllNamed(AppRoutes.getStartedScreen);
+      _logout();
     }
+  }
+
+  Future<bool> _tryTokenRefresh(String refreshToken) async {
+    Response response = await authRepo.refreshToken(refreshToken);
+
+    if (response.statusCode == 200 && response.body['success'] == true) {
+      String newAccessToken = response.body['data']['accessToken'];
+      print("✅ Token Refreshed Successfully");
+
+      // Save new token
+      apiClient.updateHeader(newAccessToken);
+      return true;
+    } else {
+      print("❌ Refresh Failed: ${response.body}");
+      return false;
+    }
+  }
+
+  void _navigateHome(String? role) {
+    if (role == 'rider') {
+      Get.offAllNamed(AppRoutes.riderHomeScreen);
+    } else {
+      Get.offAllNamed(AppRoutes.customerHomeScreen);
+    }
+  }
+
+  void _logout() {
+    print("🔒 Logging out...");
+    apiClient.sharedPreferences.remove(AppConstants.authToken);
+    apiClient.sharedPreferences.remove(AppConstants.refreshToken);
+    apiClient.sharedPreferences.remove(AppConstants.userRole);
+    apiClient.token = '';
+    apiClient.updateHeader('');
+    Get.offAllNamed(AppRoutes.getStartedScreen);
   }
 
   /*Future<void> saveDeviceToken(String token) async {
@@ -108,7 +166,6 @@ class AppController extends GetxController {
     Get.offAllNamed(AppRoutes.getStartedScreen);
   }
 
-
   void changeCurrentAppPage(int page, {bool movePage = true}) {
     currentAppPage.value = page;
 
@@ -134,5 +191,4 @@ class AppController extends GetxController {
 
     update();
   }
-
 }
