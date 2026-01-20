@@ -52,6 +52,8 @@ class User {
   bool? emailVerified;
   bool? registrationCompleted;
   String? createdAt;
+  List<LocationModel>? locations;
+  String? currentLocation;
 
   User({
     this.id,
@@ -63,6 +65,8 @@ class User {
     this.registrationCompleted,
     this.phoneNumber,
     this.createdAt,
+    this.locations,
+    this.currentLocation,
   });
 
   User.fromJson(Map<String, dynamic> json) {
@@ -75,5 +79,30 @@ class User {
     registrationCompleted = json['registrationCompleted'];
     phoneNumber = json['phoneNumber'];
     createdAt = json['createdAt'];
+    if (json['locations'] != null) {
+      locations = <LocationModel>[];
+      json['locations'].forEach((v) {
+        locations!.add(LocationModel.fromJson(v));
+      });
+    }
+  }
+}
+
+class LocationModel {
+  String? label;
+  String? preciseLocation;
+
+  LocationModel({this.label, this.preciseLocation});
+
+  LocationModel.fromJson(Map<String, dynamic> json) {
+    label = json['label'];
+    preciseLocation = json['preciseLocation'];
+  }
+
+  Map<String, dynamic> toJson() {
+    final Map<String, dynamic> data = <String, dynamic>{};
+    data['label'] = label;
+    data['preciseLocation'] = preciseLocation;
+    return data;
   }
 }

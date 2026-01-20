@@ -16,7 +16,17 @@ class AppConstants {
   static const String POST_VERIFY_OTP= '/api/auth/verify-email';
   static const String POST_RESEND_OTP= '/api/auth/resend-otp';
   static const String GET_PROFILE = '/api/auth/profile';
+  static const String PUT_PROFILE_UPDATE = '/api/auth/profile';
   static const String REFRESH_TOKEN = '/api/auth/refresh-token';
+
+  static const String GET_ORDERS_LIST = '/api/orders';
+
+  static String POST_SET_LOCATION (String orderId) => '/api/orders/$orderId/set-location';
+  static String GET_LOCATION_LABELS (String orderId) => '/api/orders/$orderId/set-location';
+  static String POST_RIDER_ACCEPT_DELIVERY (String orderId) => '/api/orders/$orderId/accept';
+  static String POST_RIDER_DECLINE_DELIVERY (String orderId) => '/api/orders/$orderId/cancel';
+
+
 
     static String getPngAsset(String image) {
     return 'assets/images/$image.png';

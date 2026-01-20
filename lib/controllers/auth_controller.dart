@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:otonav/controllers/user_controller.dart';
 import 'package:otonav/helpers/global_loader_controller.dart';
 import 'package:otonav/utils/app_constants.dart';
 import 'package:otonav/widgets/snackbars.dart';
@@ -20,9 +21,47 @@ class AuthController extends GetxController {
   var passwordController = TextEditingController();
   var nameController = TextEditingController();
   var phoneController = TextEditingController();
+  Rx<User?> userModel = Rx<User?>(null);
 
   GlobalLoaderController loader = Get.find<GlobalLoaderController>();
+  UserController userController = Get.find<UserController>();
 
+
+
+
+
+
+  Future<void> addNewLocation(String label, String address) async {
+    if (label.isEmpty || address.isEmpty) {
+      CustomSnackBar.failure(message: "Please select a label and generate a location.");
+      return;
+    }
+
+    Map<String, dynamic> body = {
+      "addLocation": {
+        "label": label,
+        "preciseLocation": address
+      }
+    };
+
+    loader.showLoader();
+
+    Response response = await authRepo.updateProfile(body);
+
+    loader.hideLoader();
+
+    if (response.statusCode == 200 && response.body['success'] == true) {
+
+      userModel.value = User.fromJson(response.body['data']);
+      await userController.getUserProfile();
+      update();
+
+      CustomSnackBar.success(message: "Location saved successfully!");
+      Get.back();
+    } else {
+      CustomSnackBar.failure(message: response.body['message'] ?? "Failed to save location");
+    }
+  }
 
   Future<void> resetPassword() async {
     String email = emailController.text.trim();
@@ -137,16 +176,25 @@ class AuthController extends GetxController {
 
     loader.showLoader();
     Response response = await authRepo.login(email, password);
-    loader.hideLoader();
+
 
     if (response.statusCode == 200 && response.body['success'] == true) {
       LoginResponse loginResponse = LoginResponse.fromJson(response.body);
 
-      String accessToken = loginResponse.data!.accessToken!;
       String role = loginResponse.data!.user!.role ?? "customer";
 
+      if (role != 'rider' && role != 'customer') {
+        loader.hideLoader();
+        CustomSnackBar.failure(
+          message: "Access Denied: The role '$role' is not supported on this app. Please use the website.",
+        );
+        return;
+      }
+
+      String accessToken = loginResponse.data!.accessToken!;
       String? refreshToken;
       String? rawCookie = response.headers?['set-cookie'];
+
 
       if (rawCookie != null) {
         int index = rawCookie.indexOf('refreshToken=');
@@ -159,8 +207,11 @@ class AuthController extends GetxController {
           }
         }
       }
+      authRepo.apiClient.updateHeader(accessToken);
 
       await saveUserSession(accessToken, refreshToken ?? "", role);
+      await userController.getUserProfile();
+      loader.hideLoader();
 
       if (loginResponse.data!.requiresRegistrationCompletion == true) {
         Get.toNamed(AppRoutes.verifyProfileScreen);
@@ -168,9 +219,13 @@ class AuthController extends GetxController {
         if (role == 'rider') {
           Get.offAllNamed(AppRoutes.riderHomeScreen);
         } else {
-          Get.offAllNamed(AppRoutes.customerHomeScreen);
+          if (role =='customer'){
+            Get.offAllNamed(AppRoutes.customerHomeScreen);
+          }
         }
       }
+
+
       CustomSnackBar.success(message: "Welcome back! Login successful.");
     }
 
@@ -186,6 +241,8 @@ class AuthController extends GetxController {
         CustomSnackBar.failure(message: errorMsg);
       }
     }
+    loader.hideLoader();
+
   }
 
   String _getErrorMessage(Response response) {

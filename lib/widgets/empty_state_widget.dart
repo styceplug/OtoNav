@@ -16,8 +16,7 @@ class EmptyState extends StatelessWidget {
     final textColor = theme.textTheme.bodyLarge?.color ?? Colors.black;
 
     return SizedBox(
-      height: Dimensions.screenHeight,
-      width: Dimensions.screenWidth,
+      height: Dimensions.height20*20,
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [

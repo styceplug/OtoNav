@@ -4,6 +4,7 @@ import 'package:otonav/screens/auth/customer/login_screen.dart';
 import 'package:otonav/screens/auth/forgotten_password.dart';
 import 'package:otonav/screens/auth/rider/rider_login.dart';
 import 'package:otonav/screens/auth/verify_otp.dart';
+import 'package:otonav/screens/edit_profile.dart';
 import 'package:otonav/screens/in_app/customer/location_screen.dart';
 import 'package:otonav/screens/in_app/customer/tracking_screen.dart';
 import 'package:otonav/screens/in_app/riders/order_completed.dart';
@@ -33,6 +34,7 @@ class AppRoutes {
   static const String customerRegisterScreen = '/customer-register-screen';
   static const String forgotPasswordScreen = '/forgot-password-screen';
   static const String verifyProfileScreen = '/verify-profile-screen';
+  static const String editProfileScreen = '/edit-profile-screen';
 
   //customer
   static const String customerHomeScreen = '/customer-home-screen';
@@ -133,6 +135,12 @@ class AppRoutes {
       name: verifyProfileScreen,
       page: () {
         return VerifyOtp();
+      },
+    ),
+    GetPage(
+      name: editProfileScreen,
+      page: () {
+        return EditProfileScreen();
       },
     ),
 

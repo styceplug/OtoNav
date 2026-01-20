@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_rating_bar/flutter_rating_bar.dart';
 import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
+import 'package:otonav/controllers/app_controller.dart';
+import 'package:otonav/controllers/auth_controller.dart';
 import 'package:otonav/controllers/user_controller.dart';
 import 'package:otonav/utils/app_constants.dart';
 import 'package:otonav/utils/dimensions.dart';
@@ -18,6 +20,8 @@ class CustomerProfilePage extends StatefulWidget {
 
 class _CustomerProfilePageState extends State<CustomerProfilePage> {
   UserController userController = Get.find<UserController>();
+  AuthController authController = Get.find<AuthController>();
+  AppController appController = Get.find<AppController>();
 
   @override
   Widget build(BuildContext context) {
@@ -26,7 +30,7 @@ class _CustomerProfilePageState extends State<CustomerProfilePage> {
         builder: (userController) {
 
           if (userController.userModel.value == null) {
-            return Center(child: Text("Unable to load profile"));
+            return Center(child: Text("Loading..."));
           }
 
           User user = userController.userModel.value!;
@@ -153,7 +157,10 @@ class _CustomerProfilePageState extends State<CustomerProfilePage> {
                       Divider(color: AppColors.grey2),
                       OptionCard('terms', 'Terms and condition'),
                       Divider(color: AppColors.grey2),
-                      OptionCard('log-out', 'Log Out'),
+                      OptionCard('log-out', 'Log Out',onTap: (){
+                        appController.clearSharedData();
+                      }),
+
                     ],
                   ),
                 ),

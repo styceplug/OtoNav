@@ -10,6 +10,10 @@ class AuthRepo extends GetConnect {
   AuthRepo({required this.apiClient});
 
 
+  Future<Response> updateProfile(Map<String, dynamic> body) async {
+    return await apiClient.putData(AppConstants.GET_PROFILE, body);
+  }
+
   Future<Response> getProfile() async {
     return await apiClient.getData(AppConstants.GET_PROFILE);
   }

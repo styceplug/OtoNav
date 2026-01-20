@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 
 import 'package:get/get.dart';
+import 'package:otonav/controllers/user_controller.dart';
 import 'package:otonav/data/api/api_client.dart';
 import 'package:otonav/data/repo/auth_repo.dart';
 import 'package:otonav/screens/pages/rider_pages/screens/rider_home_page.dart';
@@ -16,6 +17,8 @@ import '../screens/pages/user_pages/screens/home.dart';
 import '../utils/app_constants.dart';
 import '../utils/colors.dart';
 import '../utils/dimensions.dart';
+import 'auth_controller.dart';
+import 'order_controller.dart';
 
 class AppController extends GetxController {
   final AppRepo appRepo;
@@ -34,6 +37,7 @@ class AppController extends GetxController {
   var isFirstTime = false.obs;
   PageController pageController = PageController();
 
+
   final List<Widget> customerPages = [
     CustomerHomePage(),
     CustomerOrdersPage(),
@@ -51,6 +55,8 @@ class AppController extends GetxController {
     // initializeApp();
     super.onInit();
   }
+
+
 
   Future<void> initializeApp() async {
     print('Initializing App...');

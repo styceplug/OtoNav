@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:get/get.dart';
+import 'package:otonav/controllers/user_controller.dart';
 
 import '../../../controllers/app_controller.dart';
 import '../../../utils/dimensions.dart';
@@ -15,6 +16,7 @@ class RiderHomeScreen extends StatefulWidget {
 
 class _RiderHomeScreenState extends State<RiderHomeScreen> {
   AppController appController = Get.find<AppController>();
+  UserController userController = Get.find<UserController>();
 
 
   DateTime? lastPressed;

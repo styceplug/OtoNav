@@ -12,18 +12,26 @@ class RiderOrderCard extends StatefulWidget {
   final String orderId;
   final String itemCount;
   final String customerName;
-  final VoidCallback onSetLocationTap;
-  final VoidCallback onTrackOrderTap;
-  final VoidCallback? onCallVendorTap;
+  final String customerLocationPrecise;
+  final String customerLocationLabel;
+  final String pickupLocation;
+  final VoidCallback? onCallCustomerTap;
+  final VoidCallback? onStartDeliveryTap;
+  final VoidCallback? onCancelDeliveryTap;
+  final String status;
 
   const RiderOrderCard({
     Key? key,
     required this.orderId,
     required this.itemCount,
     required this.customerName,
-    required this.onSetLocationTap,
-    required this.onTrackOrderTap,
-    this.onCallVendorTap,
+    required this.status,
+    required this.customerLocationPrecise,
+    required this.customerLocationLabel,
+    required this.pickupLocation,
+    this.onCallCustomerTap,
+    this.onStartDeliveryTap,
+    this.onCancelDeliveryTap,
   }) : super(key: key);
 
   @override
@@ -146,7 +154,7 @@ class _RiderOrderCardState extends State<RiderOrderCard>
                     ),
                     Spacer(),
                     InkWell(
-                      onTap: widget.onCallVendorTap,
+                      onTap: widget.onCallCustomerTap,
                       child: Icon(Iconsax.call_calling),
                     ),
                   ],
@@ -169,35 +177,38 @@ class _RiderOrderCardState extends State<RiderOrderCard>
                           Icon(
                             CupertinoIcons.location_circle_fill,
                             color: AppColors.primaryColor,
-                            size: Dimensions.iconSize30*1.2,
+                            size: Dimensions.iconSize30 * 1.2,
                           ),
                           SizedBox(width: Dimensions.width15),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisAlignment: MainAxisAlignment.spaceAround,
-                            children: [
-                              Text(
-                                'Delivery Location',
-                                style: TextStyle(
-                                  fontSize: Dimensions.font16,
-                                  fontWeight: FontWeight.w500,
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisAlignment: MainAxisAlignment.spaceAround,
+                              children: [
+                                Text(
+                                  'Delivery Location',
+                                  style: TextStyle(
+                                    fontSize: Dimensions.font16,
+                                    fontWeight: FontWeight.w500,
+                                  ),
                                 ),
-                              ),
-                              Text(
-                                '24B Gold City Estate, Lugbe',
-                                style: TextStyle(
-                                  fontSize: Dimensions.font14,
-                                  fontWeight: FontWeight.w300,
+                                Text(
+                                  widget.customerLocationPrecise,
+                                  overflow: TextOverflow.clip,
+                                  style: TextStyle(
+                                    fontSize: Dimensions.font14,
+                                    fontWeight: FontWeight.w300,
+                                  ),
                                 ),
-                              ),
-                              Text(
-                                'Near Arcade Lane',
-                                style: TextStyle(
-                                  fontSize: Dimensions.font13,
-                                  fontWeight: FontWeight.w300,
+                                Text(
+                                  widget.customerLocationLabel,
+                                  style: TextStyle(
+                                    fontSize: Dimensions.font13,
+                                    fontWeight: FontWeight.w500,
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ],
                       ),
@@ -208,7 +219,7 @@ class _RiderOrderCardState extends State<RiderOrderCard>
                           Icon(
                             CupertinoIcons.location_circle_fill,
                             color: AppColors.primaryColor,
-                            size: Dimensions.iconSize30*1.2,
+                            size: Dimensions.iconSize30 * 1.2,
                           ),
                           SizedBox(width: Dimensions.width15),
                           Column(
@@ -240,14 +251,38 @@ class _RiderOrderCardState extends State<RiderOrderCard>
                           ),
                         ],
                       ),
-
                     ],
                   ),
                 ),
                 SizedBox(height: Dimensions.height20),
-                CustomButton(text: 'Start Delivery', onPressed: (){
-                  Get.toNamed(AppRoutes.riderTrackingScreen);
-                })
+                Row(
+                  children: [
+                    IntrinsicWidth(
+                      child: CustomButton(
+                        text: 'Cancel',
+                        onPressed: () {
+                          widget.onCancelDeliveryTap;
+                        },
+                        padding: EdgeInsets.symmetric(
+                          vertical: Dimensions.height10,
+                          horizontal: Dimensions.width20
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: Dimensions.width20),
+                    Expanded(
+                      child: CustomButton(
+                        text: 'Start Delivery',
+                        onPressed: () {
+                          widget.onStartDeliveryTap;
+                        },
+                        padding: EdgeInsets.symmetric(
+                          vertical: Dimensions.height10,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ),
             crossFadeState: _isExpanded

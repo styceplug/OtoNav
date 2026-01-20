@@ -42,91 +42,93 @@ class _CustomerLoginScreenState extends State<CustomerLoginScreen> {
           horizontal: Dimensions.width20,
           vertical: Dimensions.height20,
         ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Image.asset(AppConstants.getPngAsset('customer-login')),
-            SizedBox(height: Dimensions.height30),
-            Text(
-              'Welcome',
-              style: TextStyle(
-                fontSize: Dimensions.font30 * 1.2,
-                fontWeight: FontWeight.w600,
-                color: AppColors.accentColor,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Image.asset(AppConstants.getPngAsset('customer-login')),
+              SizedBox(height: Dimensions.height30),
+              Text(
+                'Welcome',
+                style: TextStyle(
+                  fontSize: Dimensions.font30 * 1.2,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.accentColor,
+                ),
               ),
-            ),
-            Text(
-              'Kindly Login with existing details.',
-              style: TextStyle(
-                fontSize: Dimensions.font15,
-                fontWeight: FontWeight.w300,
+              Text(
+                'Kindly Login with existing details.',
+                style: TextStyle(
+                  fontSize: Dimensions.font15,
+                  fontWeight: FontWeight.w300,
+                ),
               ),
-            ),
-            SizedBox(height: Dimensions.height20),
-            Text(
-              'Email Address',
-              style: TextStyle(fontSize: Dimensions.font17),
-            ),
-            SizedBox(height: Dimensions.height5),
-            CustomTextField(
-              hintText: 'abc@gmail.com',
-              controller: authController.emailController,
-              keyboardType: TextInputType.emailAddress,
-              maxLines: 1,
-            ),
-            SizedBox(height: Dimensions.height20),
-            Text('Password', style: TextStyle(fontSize: Dimensions.font17)),
-            SizedBox(height: Dimensions.height5),
-            CustomTextField(
-              hintText: 'password',
-              controller: authController.passwordController,
-              maxLines: 1,
-              obscureText: isPasswordVisible,
-              suffixIcon: InkWell(
-                onTap: togglePassVisibility,
-                child: isPasswordVisible
-                    ? Icon(Icons.visibility)
-                    : Icon(Icons.visibility_off),
+              SizedBox(height: Dimensions.height20),
+              Text(
+                'Email Address',
+                style: TextStyle(fontSize: Dimensions.font17),
               ),
-            ),
-            SizedBox(height: Dimensions.height10),
-            Align(
-              alignment: AlignmentGeometry.centerRight,
-              child: InkWell(
-                onTap: () {
-                  Get.toNamed(AppRoutes.forgotPasswordScreen);
-                },
-                child: Text(
-                  'Forgot Password?',
-                  style: TextStyle(
-                    fontSize: Dimensions.font14,
-                    fontWeight: FontWeight.w300,
-                    color: AppColors.black,
+              SizedBox(height: Dimensions.height5),
+              CustomTextField(
+                hintText: 'abc@gmail.com',
+                controller: authController.emailController,
+                keyboardType: TextInputType.emailAddress,
+                maxLines: 1,
+              ),
+              SizedBox(height: Dimensions.height20),
+              Text('Password', style: TextStyle(fontSize: Dimensions.font17)),
+              SizedBox(height: Dimensions.height5),
+              CustomTextField(
+                hintText: 'password',
+                controller: authController.passwordController,
+                maxLines: 1,
+                obscureText: isPasswordVisible,
+                suffixIcon: InkWell(
+                  onTap: togglePassVisibility,
+                  child: isPasswordVisible
+                      ? Icon(Icons.visibility)
+                      : Icon(Icons.visibility_off),
+                ),
+              ),
+              SizedBox(height: Dimensions.height10),
+              Align(
+                alignment: AlignmentGeometry.centerRight,
+                child: InkWell(
+                  onTap: () {
+                    Get.toNamed(AppRoutes.forgotPasswordScreen);
+                  },
+                  child: Text(
+                    'Forgot Password?',
+                    style: TextStyle(
+                      fontSize: Dimensions.font14,
+                      fontWeight: FontWeight.w300,
+                      color: AppColors.black,
+                    ),
                   ),
                 ),
               ),
-            ),
-            SizedBox(height: Dimensions.height20),
-            CustomButton(onPressed: login, text: 'LOGIN'),
-            SizedBox(height: Dimensions.height20),
-            Align(
-              alignment: Alignment.center,
-              child: InkWell(
-                onTap: () {
-                  Get.toNamed(AppRoutes.customerRegisterScreen);
-                },
-                child: Text(
-                  'New here?, Create Account',
-                  style: TextStyle(
-                    fontSize: Dimensions.font14,
-                    fontWeight: FontWeight.w300,
-                    color: AppColors.accentColor,
+              SizedBox(height: Dimensions.height20),
+              CustomButton(onPressed: login, text: 'LOGIN'),
+              SizedBox(height: Dimensions.height20),
+              Align(
+                alignment: Alignment.center,
+                child: InkWell(
+                  onTap: () {
+                    Get.toNamed(AppRoutes.customerRegisterScreen);
+                  },
+                  child: Text(
+                    'New here?, Create Account',
+                    style: TextStyle(
+                      fontSize: Dimensions.font14,
+                      fontWeight: FontWeight.w300,
+                      color: AppColors.accentColor,
+                    ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

@@ -13,6 +13,8 @@ class OrderCard extends StatefulWidget {
   final VoidCallback onSetLocationTap;
   final VoidCallback onTrackOrderTap;
   final VoidCallback? onCallVendorTap;
+  final bool isLocationSet;
+  final String status;
 
   const OrderCard({
     Key? key,
@@ -22,6 +24,8 @@ class OrderCard extends StatefulWidget {
     required this.onSetLocationTap,
     required this.onTrackOrderTap,
     this.onCallVendorTap,
+    this.isLocationSet = false,
+    required this.status,
   }) : super(key: key);
 
   @override
@@ -127,7 +131,7 @@ class _OrderCardState extends State<OrderCard>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Vendor',
+                          'Assigned Rider',
                           style: TextStyle(
                             fontSize: Dimensions.font14,
                             fontWeight: FontWeight.w300,
@@ -151,34 +155,46 @@ class _OrderCardState extends State<OrderCard>
                 ),
                 SizedBox(height: Dimensions.height10),
 
-                CustomButton(
-                  text: 'Set Delivery Location',
-                  onPressed: widget.onSetLocationTap,
-                  backgroundColor: AppColors.cardColor,
-                  padding: EdgeInsets.symmetric(vertical: Dimensions.height10),
-                  textStyle: TextStyle(
-                    fontSize: Dimensions.font14,
-                    fontWeight: FontWeight.w400,
+                if (!widget.isLocationSet) ...[
+                  CustomButton(
+                    text: 'Set Delivery Location',
+                    onPressed: widget.onSetLocationTap,
+                    backgroundColor: AppColors.cardColor,
+                    padding: EdgeInsets.symmetric(
+                      vertical: Dimensions.height10,
+                    ),
+                    textStyle: TextStyle(
+                      fontSize: Dimensions.font14,
+                      fontWeight: FontWeight.w400,
+                    ),
+                    icon: Icon(
+                      CupertinoIcons.location_circle_fill,
+                      color: AppColors.primaryColor,
+                    ),
                   ),
-                  icon: Icon(
-                    CupertinoIcons.location_circle_fill,
-                    color: AppColors.primaryColor,
+                  SizedBox(height: Dimensions.height10),
+                ],
+                if (widget.isLocationSet) ...[
+                  Text(
+                    'Waiting for Assigned Rider to Confirm order...',
+                    maxLines: 1,
                   ),
-                ),
-                SizedBox(height: Dimensions.height10),
+                  SizedBox(height: Dimensions.height10),
+                ],
 
-                // Track Order Button
-                CustomButton(
-                  text: 'Track Order',
-                  onPressed: widget.onTrackOrderTap,
-                  backgroundColor: AppColors.accentColor,
-                  padding: EdgeInsets.symmetric(vertical: Dimensions.height10),
-                  textStyle: TextStyle(
-                    fontSize: Dimensions.font15,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.white,
+                if(widget.status != 'pending' && widget.status != 'customer_location_set')...[
+                  CustomButton(
+                    text: 'Track Order',
+                    onPressed: widget.onTrackOrderTap,
+                    backgroundColor: AppColors.accentColor,
+                    padding: EdgeInsets.symmetric(vertical: Dimensions.height10),
+                    textStyle: TextStyle(
+                      fontSize: Dimensions.font15,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.white,
+                    ),
                   ),
-                ),
+                ]
               ],
             ),
             crossFadeState: _isExpanded
@@ -191,6 +207,3 @@ class _OrderCardState extends State<OrderCard>
     );
   }
 }
-
-
-

@@ -1,13 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:get/get.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:otonav/controllers/auth_controller.dart';
+import 'package:otonav/controllers/user_controller.dart';
 import 'package:otonav/utils/dimensions.dart';
 import 'package:otonav/widgets/custom_button.dart';
 import 'package:otonav/widgets/custom_textfield.dart';
 
+import '../../../model/user_model.dart';
 import '../../../utils/app_constants.dart';
 import '../../../utils/colors.dart';
+import '../../../widgets/snackbars.dart';
 
 class LocationScreen extends StatefulWidget {
   const LocationScreen({super.key});
@@ -19,7 +24,8 @@ class LocationScreen extends StatefulWidget {
 class _LocationScreenState extends State<LocationScreen> {
   final TextEditingController nameController = TextEditingController();
   final TextEditingController locationController = TextEditingController();
-
+  UserController userController = Get.find<UserController>();
+  AuthController authController = Get.find<AuthController>();
   bool isLoadingLocation = false;
   String? selectedName;
 
@@ -44,6 +50,28 @@ class _LocationScreenState extends State<LocationScreen> {
     nameController.dispose();
     locationController.dispose();
     super.dispose();
+  }
+
+  IconData _getLocationIcon(String label) {
+    final List<Map<String, dynamic>> locationTypes = [
+      {'name': 'Home', 'icon': Icons.home_rounded},
+      {'name': 'Office', 'icon': Icons.work_rounded},
+      {'name': "Partner's Place", 'icon': Icons.favorite_rounded},
+      {'name': "Parents' House", 'icon': Icons.family_restroom_rounded},
+      {'name': 'Gym', 'icon': Icons.fitness_center_rounded},
+      {'name': 'Church', 'icon': Icons.church_rounded},
+      {'name': 'School', 'icon': Icons.school_rounded},
+      {'name': 'Market', 'icon': Icons.shopping_cart_rounded},
+      {'name': 'Chill Spot', 'icon': Icons.local_cafe_rounded},
+    ];
+
+    var match = locationTypes.firstWhere(
+      (element) =>
+          element['name'].toString().toLowerCase() == label.toLowerCase(),
+      orElse: () => {'icon': Icons.location_on_rounded},
+    );
+
+    return match['icon'] as IconData;
   }
 
   void showLocationNameModal() {
@@ -148,12 +176,11 @@ class _LocationScreenState extends State<LocationScreen> {
         if (placemarks.isNotEmpty) {
           Placemark place = placemarks[0];
           locationController.text =
-          "${place.street}, ${place.locality}, ${place.country}";
+              "${place.street}, ${place.locality}, ${place.country}";
         }
       } catch (e) {
         locationController.text = "${position.latitude}, ${position.longitude}";
       }
-
     } catch (e) {
       print(e);
     } finally {
@@ -165,6 +192,8 @@ class _LocationScreenState extends State<LocationScreen> {
 
   @override
   Widget build(BuildContext context) {
+    User user = userController.userModel.value!;
+
     return Scaffold(
       body: Container(
         padding: EdgeInsets.fromLTRB(
@@ -201,34 +230,52 @@ class _LocationScreenState extends State<LocationScreen> {
               ),
               SizedBox(height: Dimensions.height20),
               Row(
+                mainAxisAlignment: MainAxisAlignment.start,
                 children: [
-                  Container(
-                    height: Dimensions.height10 * 7,
-                    width: Dimensions.width10 * 7,
-                    decoration: BoxDecoration(
-                      color: AppColors.white,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: [
-                        SizedBox(height: Dimensions.height5),
-                        Image.asset(
-                          AppConstants.getPngAsset('home-icon'),
-                          scale: 2,
-                        ),
-                        Text(
-                          'Home',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w300,
-                            fontSize: Dimensions.font13,
-                            color: AppColors.primaryColor,
+                  if (user.locations != null)
+                    ...user.locations!.map((location) {
+                      return Padding(
+                        padding: EdgeInsets.only(right: Dimensions.width20),
+                        child: Container(
+                          height: Dimensions.height10 * 8,
+                          width: Dimensions.width10 * 8,
+                          decoration: BoxDecoration(
+                            color: AppColors.white,
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.grey.withOpacity(0.1),
+                                blurRadius: 5,
+                                offset: Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.spaceAround,
+                            children: [
+                              SizedBox(height: Dimensions.height5),
+
+                              Icon(
+                                _getLocationIcon(location.label ?? ""),
+                                color: AppColors.primaryColor,
+                                size: Dimensions.iconSize24,
+                              ),
+
+                              Text(
+                                location.label ?? 'Loc',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w300,
+                                  fontSize: Dimensions.font13,
+                                  color: AppColors.primaryColor,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              SizedBox(height: Dimensions.height5),
+                            ],
                           ),
                         ),
-                        SizedBox(height: Dimensions.height5),
-                      ],
-                    ),
-                  ),
+                      );
+                    }).toList(),
                 ],
               ),
               SizedBox(height: Dimensions.height20),
@@ -248,31 +295,32 @@ class _LocationScreenState extends State<LocationScreen> {
                 ),
               ),
               SizedBox(height: Dimensions.height10),
-            Container(
-              height: 200, // Fixed height for map area
-              width: double.infinity,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(Dimensions.radius10),
-                border: Border.all(color: AppColors.grey4),
-              ),
-              child: ClipRRect( // Clips the map corners to match container
-                borderRadius: BorderRadius.circular(Dimensions.radius10),
-                child: GoogleMap(
-                  initialCameraPosition: CameraPosition(
-                    target: initialPosition,
-                    zoom: 14,
+              Container(
+                height: 200, // Fixed height for map area
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(Dimensions.radius10),
+                  border: Border.all(color: AppColors.grey4),
+                ),
+                child: ClipRRect(
+                  // Clips the map corners to match container
+                  borderRadius: BorderRadius.circular(Dimensions.radius10),
+                  child: GoogleMap(
+                    initialCameraPosition: CameraPosition(
+                      target: initialPosition,
+                      zoom: 14,
+                    ),
+                    myLocationEnabled: true,
+                    myLocationButtonEnabled: false,
+                    zoomControlsEnabled: false,
+                    markers: markers,
+                    onMapCreated: (GoogleMapController controller) {
+                      mapController = controller;
+                      getCurrentLocation();
+                    },
                   ),
-                  myLocationEnabled: true,
-                  myLocationButtonEnabled: false,
-                  zoomControlsEnabled: false,
-                  markers: markers,
-                  onMapCreated: (GoogleMapController controller) {
-                    mapController = controller;
-                    getCurrentLocation();
-                  },
                 ),
               ),
-            ),
               SizedBox(height: Dimensions.height20),
 
               InkWell(
@@ -324,7 +372,19 @@ class _LocationScreenState extends State<LocationScreen> {
                 ),
               ),
               SizedBox(height: Dimensions.height20),
-              CustomButton(text: 'Save new Location', onPressed: () {}),
+              CustomButton(
+                text: 'Save new Location',
+                onPressed: () {
+                  String address = locationController.text.trim();
+                  if (selectedName == null) {
+                    CustomSnackBar.failure(
+                      message: "Please choose a label (e.g., Home, Office)",
+                    );
+                    return;
+                  }
+                  authController.addNewLocation(selectedName!, address);
+                },
+              ),
             ],
           ),
         ),
