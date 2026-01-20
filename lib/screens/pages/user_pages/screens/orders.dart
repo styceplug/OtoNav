@@ -128,7 +128,7 @@ class _CustomerOrdersPageState extends State<CustomerOrdersPage> {
                           status: order.status ?? '',
                           orderId: order.orderNumber ?? "N/A",
                           itemCount: order.packageDescription ?? "Items",
-                          vendorName: "Vendor",
+                          vendorName: order.rider?.name ?? '',
                           onSetLocationTap: () =>
                               Get.toNamed(AppRoutes.locationScreen),
                           onTrackOrderTap: () =>

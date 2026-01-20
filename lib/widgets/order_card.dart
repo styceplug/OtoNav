@@ -174,7 +174,7 @@ class _OrderCardState extends State<OrderCard>
                   ),
                   SizedBox(height: Dimensions.height10),
                 ],
-                if (widget.isLocationSet) ...[
+                if (widget.isLocationSet && widget.status =='pending') ...[
                   Text(
                     'Waiting for Assigned Rider to Confirm order...',
                     maxLines: 1,
@@ -182,7 +182,9 @@ class _OrderCardState extends State<OrderCard>
                   SizedBox(height: Dimensions.height10),
                 ],
 
-                if(widget.status != 'pending' && widget.status != 'customer_location_set')...[
+
+
+                if(widget.status != 'pending' && widget.status != 'customer_location_set' && widget.status != 'cancelled')...[
                   CustomButton(
                     text: 'Track Order',
                     onPressed: widget.onTrackOrderTap,
@@ -194,8 +196,12 @@ class _OrderCardState extends State<OrderCard>
                       color: AppColors.white,
                     ),
                   ),
-                ]
+                ],
+                if (widget.status == 'cancelled')...[
+                  Text('No Actions required: Order Cancelled',style: TextStyle(color: AppColors.error,fontWeight: FontWeight.w500),)]
+
               ],
+
             ),
             crossFadeState: _isExpanded
                 ? CrossFadeState.showSecond

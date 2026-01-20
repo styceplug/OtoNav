@@ -15,9 +15,9 @@ class RiderOrderCard extends StatefulWidget {
   final String customerLocationPrecise;
   final String customerLocationLabel;
   final String pickupLocation;
-  final VoidCallback? onCallCustomerTap;
-  final VoidCallback? onStartDeliveryTap;
-  final VoidCallback? onCancelDeliveryTap;
+  final VoidCallback onCallCustomerTap;
+  final VoidCallback onStartDeliveryTap;
+  final VoidCallback onCancelDeliveryTap;
   final String status;
 
   const RiderOrderCard({
@@ -29,9 +29,9 @@ class RiderOrderCard extends StatefulWidget {
     required this.customerLocationPrecise,
     required this.customerLocationLabel,
     required this.pickupLocation,
-    this.onCallCustomerTap,
-    this.onStartDeliveryTap,
-    this.onCancelDeliveryTap,
+    required this.onCallCustomerTap,
+    required this.onStartDeliveryTap,
+    required this.onCancelDeliveryTap,
   }) : super(key: key);
 
   @override
@@ -255,34 +255,43 @@ class _RiderOrderCardState extends State<RiderOrderCard>
                   ),
                 ),
                 SizedBox(height: Dimensions.height20),
-                Row(
-                  children: [
-                    IntrinsicWidth(
-                      child: CustomButton(
+                if (widget.status == 'pending' || widget.status == 'customer_location_set')...[
+                  Row(
+                    children: [
+                      CustomButton(
                         text: 'Cancel',
                         onPressed: () {
-                          widget.onCancelDeliveryTap;
+                          print('tapped');
+                          widget.onCancelDeliveryTap();
                         },
                         padding: EdgeInsets.symmetric(
-                          vertical: Dimensions.height10,
-                          horizontal: Dimensions.width20
+                            vertical: Dimensions.height10,
+                            horizontal: Dimensions.width20
+                        ),
+                        backgroundColor: AppColors.primaryColor,
+                      ),
+                      SizedBox(width: Dimensions.width20),
+                      Expanded(
+                        child: CustomButton(
+                          text: 'Start Delivery',
+                          onPressed: () {
+                            widget.onStartDeliveryTap();
+                          },
+                          padding: EdgeInsets.symmetric(
+                            vertical: Dimensions.height10,
+                          ),
                         ),
                       ),
-                    ),
-                    SizedBox(width: Dimensions.width20),
-                    Expanded(
-                      child: CustomButton(
-                        text: 'Start Delivery',
-                        onPressed: () {
-                          widget.onStartDeliveryTap;
-                        },
-                        padding: EdgeInsets.symmetric(
-                          vertical: Dimensions.height10,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+                    ],
+                  ),
+                ]
+                else if (widget.status == 'confirmed')...[
+                  CustomButton(text: 'Head to Map', onPressed: (){
+                    Get.toNamed(AppRoutes.riderTrackingScreen);
+                  })
+                ],
+                if (widget.status == 'cancelled')...[
+                  Text('No Actions required: Order Cancelled',style: TextStyle(color: AppColors.error,fontWeight: FontWeight.w500),)]
               ],
             ),
             crossFadeState: _isExpanded

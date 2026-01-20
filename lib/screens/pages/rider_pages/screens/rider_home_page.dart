@@ -232,16 +232,10 @@ class _RiderHomePageState extends State<RiderHomePage> {
                                 orderController.acceptOrder(order.id!);
                               },
                               onCancelDeliveryTap: () {
-                                Get.defaultDialog(
-                                  title: "Decline Order?",
-                                  middleText: "Are you sure you want to decline this order?",
-                                  textConfirm: "Yes, Decline",
-                                  confirmTextColor: Colors.white,
+                                showDeclineDialog(
                                   onConfirm: () {
-                                    Get.back();
                                     orderController.cancelOrder(order.id!);
                                   },
-                                  onCancel: () {},
                                 );
                               },
                             ),
@@ -256,6 +250,138 @@ class _RiderHomePageState extends State<RiderHomePage> {
           );
         },
       ),
+    );
+  }
+  void showDeclineDialog({required VoidCallback onConfirm}) {
+    Get.dialog(
+      Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(Dimensions.radius20),
+        ),
+        elevation: 0,
+        backgroundColor: Colors.transparent,
+        child: Container(
+          padding: EdgeInsets.all(Dimensions.width20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            shape: BoxShape.rectangle,
+            borderRadius: BorderRadius.circular(Dimensions.radius20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black26,
+                blurRadius: 10.0,
+                offset: const Offset(0.0, 10.0),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // 1. Warning Icon with Red Glow
+              Container(
+                padding: EdgeInsets.all(15),
+                decoration: BoxDecoration(
+                  color: Colors.redAccent.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Iconsax.warning_2, // Or CupertinoIcons.exclamationmark_circle
+                  size: 40,
+                  color: Colors.redAccent,
+                ),
+              ),
+              SizedBox(height: Dimensions.height20),
+
+              // 2. Title
+              Text(
+                "Decline Order?",
+                style: TextStyle(
+                  fontSize: Dimensions.font20,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              SizedBox(height: Dimensions.height10),
+
+              // 3. Message
+              Text(
+                "Are you sure you want to decline this order? This action cannot be undone.",
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: Dimensions.font14,
+                  color: AppColors.grey5, // or Colors.grey[600]
+                ),
+              ),
+              SizedBox(height: Dimensions.height30),
+
+              // 4. Buttons Row
+              Row(
+                children: [
+                  // CANCEL (Go Back) BUTTON
+                  Expanded(
+                    child: InkWell(
+                      onTap: () => Get.back(), // Close dialog
+                      child: Container(
+                        padding: EdgeInsets.symmetric(vertical: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.transparent,
+                          borderRadius: BorderRadius.circular(Dimensions.radius10),
+                          border: Border.all(color: Colors.grey[300]!),
+                        ),
+                        child: Center(
+                          child: Text(
+                            "No, Keep it",
+                            style: TextStyle(
+                              fontSize: Dimensions.font15,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.black,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: Dimensions.width20),
+
+                  // CONFIRM (Decline) BUTTON
+                  Expanded(
+                    child: InkWell(
+                      onTap: () {
+                        Get.back(); // Close dialog first
+                        onConfirm(); // Trigger actual API call
+                      },
+                      child: Container(
+                        padding: EdgeInsets.symmetric(vertical: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.redAccent,
+                          borderRadius: BorderRadius.circular(Dimensions.radius10),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.redAccent.withOpacity(0.3),
+                              blurRadius: 5,
+                              offset: Offset(0, 3),
+                            )
+                          ],
+                        ),
+                        child: Center(
+                          child: Text(
+                            "Yes, Decline",
+                            style: TextStyle(
+                              fontSize: Dimensions.font15,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+      barrierDismissible: false, // User must click a button
     );
   }
 }

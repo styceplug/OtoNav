@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:otonav/helpers/global_loader_controller.dart';
+import 'package:otonav/routes/routes.dart';
 import '../data/repo/order_repo.dart';
 import '../model/order_model.dart';
 import '../widgets/snackbars.dart';
@@ -53,7 +54,8 @@ class OrderController extends GetxController {
         CustomSnackBar.success(
           message: "Order Accepted! Head to the pickup location.",
         );
-        await getOrders(); // Refresh list to update status
+        await getOrders();
+        Get.toNamed(AppRoutes.riderTrackingScreen);
       } else {
         CustomSnackBar.failure(
           message: response.body['message'] ?? "Failed to accept order",
