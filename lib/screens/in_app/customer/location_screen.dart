@@ -192,203 +192,212 @@ class _LocationScreenState extends State<LocationScreen> {
 
   @override
   Widget build(BuildContext context) {
-    User user = userController.userModel.value!;
-
     return Scaffold(
-      body: Container(
-        padding: EdgeInsets.fromLTRB(
-          Dimensions.width20,
-          Dimensions.height100,
-          Dimensions.width20,
-          Dimensions.height20,
-        ),
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Add New Locations',
-                style: TextStyle(
-                  fontSize: Dimensions.font22,
-                  fontWeight: FontWeight.w500,
+      body: Obx(() {
+        if (userController.userModel.value == null) {
+          return Center(child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: Dimensions.width20),
+            child: LinearProgressIndicator(
+              color: AppColors.accentColor,
+            ),
+          ));
+        }
+        User user = userController.userModel.value!;
+        return Container(
+          padding: EdgeInsets.fromLTRB(
+            Dimensions.width20,
+            Dimensions.height100,
+            Dimensions.width20,
+            Dimensions.height20,
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Add New Locations',
+                  style: TextStyle(
+                    fontSize: Dimensions.font22,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
-              ),
-              Text(
-                'Save Notable Locations in our database',
-                style: TextStyle(
-                  fontSize: Dimensions.font15,
-                  fontWeight: FontWeight.w400,
+                Text(
+                  'Save Notable Locations in our database',
+                  style: TextStyle(
+                    fontSize: Dimensions.font15,
+                    fontWeight: FontWeight.w400,
+                  ),
                 ),
-              ),
-              SizedBox(height: Dimensions.height20),
-              Text(
-                'Saved Locations',
-                style: TextStyle(
-                  fontSize: Dimensions.font16,
-                  fontWeight: FontWeight.w500,
+                SizedBox(height: Dimensions.height20),
+                Text(
+                  'Saved Locations',
+                  style: TextStyle(
+                    fontSize: Dimensions.font16,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
-              ),
-              SizedBox(height: Dimensions.height20),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.start,
-                children: [
-                  if (user.locations != null)
-                    ...user.locations!.map((location) {
-                      return Padding(
-                        padding: EdgeInsets.only(right: Dimensions.width20),
-                        child: Container(
-                          height: Dimensions.height10 * 8,
-                          width: Dimensions.width10 * 8,
-                          decoration: BoxDecoration(
-                            color: AppColors.white,
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.grey.withOpacity(0.1),
-                                blurRadius: 5,
-                                offset: Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.spaceAround,
-                            children: [
-                              SizedBox(height: Dimensions.height5),
-
-                              Icon(
-                                _getLocationIcon(location.label ?? ""),
-                                color: AppColors.primaryColor,
-                                size: Dimensions.iconSize24,
-                              ),
-
-                              Text(
-                                location.label ?? 'Loc',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w300,
-                                  fontSize: Dimensions.font13,
-                                  color: AppColors.primaryColor,
+                SizedBox(height: Dimensions.height20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  children: [
+                    if (user.locations != null)
+                      ...user.locations!.map((location) {
+                        return Padding(
+                          padding: EdgeInsets.only(right: Dimensions.width20),
+                          child: Container(
+                            height: Dimensions.height10 * 8,
+                            width: Dimensions.width10 * 8,
+                            decoration: BoxDecoration(
+                              color: AppColors.white,
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.grey.withOpacity(0.1),
+                                  blurRadius: 5,
+                                  offset: Offset(0, 2),
                                 ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              SizedBox(height: Dimensions.height5),
-                            ],
-                          ),
-                        ),
-                      );
-                    }).toList(),
-                ],
-              ),
-              SizedBox(height: Dimensions.height20),
-              Text(
-                'New Locations',
-                style: TextStyle(
-                  fontSize: Dimensions.font16,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              Text(
-                'You have to currently be in the location to save it ',
-                style: TextStyle(
-                  fontSize: Dimensions.font15,
-                  fontWeight: FontWeight.w300,
-                  color: AppColors.grey5,
-                ),
-              ),
-              SizedBox(height: Dimensions.height10),
-              Container(
-                height: 200, // Fixed height for map area
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(Dimensions.radius10),
-                  border: Border.all(color: AppColors.grey4),
-                ),
-                child: ClipRRect(
-                  // Clips the map corners to match container
-                  borderRadius: BorderRadius.circular(Dimensions.radius10),
-                  child: GoogleMap(
-                    initialCameraPosition: CameraPosition(
-                      target: initialPosition,
-                      zoom: 14,
-                    ),
-                    myLocationEnabled: true,
-                    myLocationButtonEnabled: false,
-                    zoomControlsEnabled: false,
-                    markers: markers,
-                    onMapCreated: (GoogleMapController controller) {
-                      mapController = controller;
-                      getCurrentLocation();
-                    },
-                  ),
-                ),
-              ),
-              SizedBox(height: Dimensions.height20),
+                              ],
+                            ),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.spaceAround,
+                              children: [
+                                SizedBox(height: Dimensions.height5),
 
-              InkWell(
-                onTap: showLocationNameModal,
-                child: Container(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: Dimensions.width20,
-                    vertical: Dimensions.height15,
+                                Icon(
+                                  _getLocationIcon(location.label ?? ""),
+                                  color: AppColors.primaryColor,
+                                  size: Dimensions.iconSize24,
+                                ),
+
+                                Text(
+                                  location.label ?? 'Loc',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w300,
+                                    fontSize: Dimensions.font13,
+                                    color: AppColors.primaryColor,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                SizedBox(height: Dimensions.height5),
+                              ],
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                  ],
+                ),
+                SizedBox(height: Dimensions.height20),
+                Text(
+                  'New Locations',
+                  style: TextStyle(
+                    fontSize: Dimensions.font16,
+                    fontWeight: FontWeight.w500,
                   ),
+                ),
+                Text(
+                  'You have to currently be in the location to save it ',
+                  style: TextStyle(
+                    fontSize: Dimensions.font15,
+                    fontWeight: FontWeight.w300,
+                    color: AppColors.grey5,
+                  ),
+                ),
+                SizedBox(height: Dimensions.height10),
+                Container(
+                  height: 200, // Fixed height for map area
+                  width: double.infinity,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(Dimensions.radius10),
-                    color: AppColors.cardColor,
+                    border: Border.all(color: AppColors.grey4),
                   ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        selectedName ?? 'What will this place be called?',
-                        style: TextStyle(
-                          fontSize: Dimensions.font15,
-                          color: selectedName == null
-                              ? AppColors.grey5
-                              : Colors.black,
-                        ),
+                  child: ClipRRect(
+                    // Clips the map corners to match container
+                    borderRadius: BorderRadius.circular(Dimensions.radius10),
+                    child: GoogleMap(
+                      initialCameraPosition: CameraPosition(
+                        target: initialPosition,
+                        zoom: 14,
                       ),
-                      Icon(Icons.arrow_drop_down, color: AppColors.grey5),
-                    ],
+                      myLocationEnabled: true,
+                      myLocationButtonEnabled: false,
+                      zoomControlsEnabled: false,
+                      markers: markers,
+                      onMapCreated: (GoogleMapController controller) {
+                        mapController = controller;
+                        getCurrentLocation();
+                      },
+                    ),
                   ),
                 ),
-              ),
-              SizedBox(height: Dimensions.height20),
-              GestureDetector(
-                onTap: getCurrentLocation,
-                child: AbsorbPointer(
-                  child: CustomTextField(
-                    controller: locationController, // Bind controller
-                    labelText: isLoadingLocation
-                        ? 'Fetching location...'
-                        : 'Generate Location',
-                    suffixIcon: isLoadingLocation
-                        ? Container(
-                            padding: EdgeInsets.all(10),
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : Icon(Icons.location_searching),
+                SizedBox(height: Dimensions.height20),
+
+                InkWell(
+                  onTap: showLocationNameModal,
+                  child: Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: Dimensions.width20,
+                      vertical: Dimensions.height15,
+                    ),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(Dimensions.radius10),
+                      color: AppColors.cardColor,
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          selectedName ?? 'What will this place be called?',
+                          style: TextStyle(
+                            fontSize: Dimensions.font15,
+                            color: selectedName == null
+                                ? AppColors.grey5
+                                : Colors.black,
+                          ),
+                        ),
+                        Icon(Icons.arrow_drop_down, color: AppColors.grey5),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-              SizedBox(height: Dimensions.height20),
-              CustomButton(
-                text: 'Save new Location',
-                onPressed: () {
-                  String address = locationController.text.trim();
-                  if (selectedName == null) {
-                    CustomSnackBar.failure(
-                      message: "Please choose a label (e.g., Home, Office)",
-                    );
-                    return;
-                  }
-                  authController.addNewLocation(selectedName!, address);
-                },
-              ),
-            ],
+                SizedBox(height: Dimensions.height20),
+                GestureDetector(
+                  onTap: getCurrentLocation,
+                  child: AbsorbPointer(
+                    child: CustomTextField(
+                      controller: locationController, // Bind controller
+                      labelText: isLoadingLocation
+                          ? 'Fetching location...'
+                          : 'Generate Location',
+                      suffixIcon: isLoadingLocation
+                          ? Container(
+                              padding: EdgeInsets.all(10),
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : Icon(Icons.location_searching),
+                    ),
+                  ),
+                ),
+                SizedBox(height: Dimensions.height20),
+                CustomButton(
+                  text: 'Save new Location',
+                  onPressed: () {
+                    String address = locationController.text.trim();
+                    if (selectedName == null) {
+                      CustomSnackBar.failure(
+                        message: "Please choose a label (e.g., Home, Office)",
+                      );
+                      return;
+                    }
+                    authController.addNewLocation(selectedName!, address);
+                  },
+                ),
+              ],
+            ),
           ),
-        ),
-      ),
+        );
+      }),
     );
   }
 }

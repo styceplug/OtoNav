@@ -9,6 +9,8 @@ import '../../../../model/order_model.dart';
 import '../../../../routes/routes.dart';
 import '../../../../utils/colors.dart';
 import '../../../../utils/dimensions.dart';
+import '../../../../widgets/custom_button.dart';
+import '../../../../widgets/snackbars.dart';
 
 class CustomerOrdersPage extends StatefulWidget {
   const CustomerOrdersPage({super.key});
@@ -131,9 +133,16 @@ class _CustomerOrdersPageState extends State<CustomerOrdersPage> {
                           vendorName: order.rider?.name ?? '',
                           onSetLocationTap: () =>
                               Get.toNamed(AppRoutes.locationScreen),
-                          onTrackOrderTap: () =>
-                              Get.toNamed(AppRoutes.trackingScreen),
+                          onTrackOrderTap: () {
+                            Get.toNamed(
+                              AppRoutes.customerTrackingScreen,
+                              arguments: order.id!,
+                            );
+                          },
                           onCallVendorTap: () {},
+                          onRateDeliveryTap: () {
+                            _showRatingModal(context, order.id!);
+                          },
                         ),
                       );
                     },
@@ -174,6 +183,51 @@ class _CustomerOrdersPageState extends State<CustomerOrdersPage> {
             color: isSelected ? Colors.white : Colors.black,
             fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
           ),
+        ),
+      ),
+    );
+  }
+
+  ///come back to work on this
+
+  void _showRatingModal(BuildContext context, String orderId) {
+    Get.bottomSheet(
+      Container(
+        padding: EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40, height: 5,
+              decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(10)),
+            ),
+            SizedBox(height: 20),
+            Text("Rate your Experience", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            SizedBox(height: 10),
+            Text("How was the delivery for Order #...", style: TextStyle(color: Colors.grey)),
+            SizedBox(height: 30),
+
+            // Star Rating Row (Simple visual placeholder)
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(5, (index) => Icon(Iconsax.star1, color: Colors.amber, size: 36)),
+            ),
+
+            SizedBox(height: 30),
+            CustomButton(
+              text: "Submit Feedback",
+              backgroundColor: AppColors.primaryColor,
+              onPressed: () {
+                // TODO: Call API to rate order
+                Get.back();
+                CustomSnackBar.success(message: "Thanks for your feedback!");
+              },
+            )
+          ],
         ),
       ),
     );

@@ -1,5 +1,6 @@
 import '../model/user_model.dart';
 
+
 class OrderModel {
   String? id;
   String? orderNumber;
@@ -16,14 +17,22 @@ class OrderModel {
   String? assignedAt;
   String? riderAcceptedAt;
   String? customerLocationSetAt;
+  String? packagePickedUpAt;      // New
+  String? deliveryStartedAt;      // New
+  String? arrivedAtLocationAt;    // New
   String? deliveredAt;
   String? cancelledAt;
   String? createdAt;
   String? updatedAt;
 
+  // Cancellation Details
+  String? cancelledBy;            // New
+  String? cancellationReason;     // New
+
   // Nested Objects
   OrderUser? customer;
   OrderUser? rider;
+  OrganizationModel? organization; // New
 
   OrderModel({
     this.id,
@@ -39,12 +48,18 @@ class OrderModel {
     this.assignedAt,
     this.riderAcceptedAt,
     this.customerLocationSetAt,
+    this.packagePickedUpAt,
+    this.deliveryStartedAt,
+    this.arrivedAtLocationAt,
     this.deliveredAt,
     this.cancelledAt,
+    this.cancelledBy,
+    this.cancellationReason,
     this.createdAt,
     this.updatedAt,
     this.customer,
     this.rider,
+    this.organization,
   });
 
   OrderModel.fromJson(Map<String, dynamic> json) {
@@ -63,14 +78,22 @@ class OrderModel {
     assignedAt = json['assignedAt'];
     riderAcceptedAt = json['riderAcceptedAt'];
     customerLocationSetAt = json['customerLocationSetAt'];
+    packagePickedUpAt = json['packagePickedUpAt'];
+    deliveryStartedAt = json['deliveryStartedAt'];
+    arrivedAtLocationAt = json['arrivedAtLocationAt'];
     deliveredAt = json['deliveredAt'];
     cancelledAt = json['cancelledAt'];
     createdAt = json['createdAt'];
     updatedAt = json['updatedAt'];
 
+    // Cancellation
+    cancelledBy = json['cancelledBy'];
+    cancellationReason = json['cancellationReason'];
+
     // Parse Nested Objects
     customer = json['customer'] != null ? OrderUser.fromJson(json['customer']) : null;
     rider = json['rider'] != null ? OrderUser.fromJson(json['rider']) : null;
+    organization = json['organization'] != null ? OrganizationModel.fromJson(json['organization']) : null;
   }
 }
 
@@ -80,7 +103,8 @@ class OrderUser {
   String? name;
   String? phoneNumber;
   String? currentLocation;
-  List<LocationModel>? locations; // Reusing your existing LocationModel
+  bool? isActive; // New field for riders
+  List<LocationModel>? locations;
 
   OrderUser({
     this.id,
@@ -88,6 +112,7 @@ class OrderUser {
     this.name,
     this.phoneNumber,
     this.currentLocation,
+    this.isActive,
     this.locations,
   });
 
@@ -97,6 +122,7 @@ class OrderUser {
     name = json['name'];
     phoneNumber = json['phoneNumber'];
     currentLocation = json['currentLocation'];
+    isActive = json['isActive'];
 
     if (json['locations'] != null) {
       locations = <LocationModel>[];
@@ -104,5 +130,35 @@ class OrderUser {
         locations!.add(LocationModel.fromJson(v));
       });
     }
+  }
+}
+
+class OrganizationModel {
+  String? id;
+  String? name;
+  String? address;
+  OwnerModel? owner;
+
+  OrganizationModel({this.id, this.name, this.address, this.owner});
+
+  OrganizationModel.fromJson(Map<String, dynamic> json) {
+    id = json['id'];
+    name = json['name'];
+    address = json['address'];
+    owner = json['owner'] != null ? OwnerModel.fromJson(json['owner']) : null;
+  }
+}
+
+class OwnerModel {
+  String? id;
+  String? name;
+  String? email;
+
+  OwnerModel({this.id, this.name, this.email});
+
+  OwnerModel.fromJson(Map<String, dynamic> json) {
+    id = json['id'];
+    name = json['name'];
+    email = json['email'];
   }
 }

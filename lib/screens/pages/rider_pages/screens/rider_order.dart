@@ -178,13 +178,20 @@ class _RiderOrderPageState extends State<RiderOrderPage> {
                                 'Customer Yet to Verify Data',
                             customerLocationPrecise: order.customerLocationPrecise ??
                                 'Customer Yet to Verify Data',
-                            pickupLocation: 'Yet to Setup',
+                            pickupLocation: order.organization?.address ?? 'loading...',
                             onStartDeliveryTap: () {
                               orderController.acceptOrder(order.id!);
                             },
                             onCancelDeliveryTap: () {
                               orderController.cancelOrder(order.id!);
-                            }
+                            },
+                          businessName: order.organization?.name ?? 'Loading...',
+                          onTrackOrderTap: () {
+                            Get.toNamed(
+                                AppRoutes.riderTrackingScreen,
+                                arguments: order
+                            );
+                          },
                         ),
                       );
                     },

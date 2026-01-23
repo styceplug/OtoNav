@@ -3,6 +3,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
 
+import '../model/order_model.dart';
 import '../routes/routes.dart';
 import '../utils/colors.dart';
 import '../utils/dimensions.dart';
@@ -18,7 +19,9 @@ class RiderOrderCard extends StatefulWidget {
   final VoidCallback onCallCustomerTap;
   final VoidCallback onStartDeliveryTap;
   final VoidCallback onCancelDeliveryTap;
+  final VoidCallback? onTrackOrderTap;
   final String status;
+  final String businessName;
 
   const RiderOrderCard({
     Key? key,
@@ -32,6 +35,8 @@ class RiderOrderCard extends StatefulWidget {
     required this.onCallCustomerTap,
     required this.onStartDeliveryTap,
     required this.onCancelDeliveryTap,
+    required this.businessName,
+    this.onTrackOrderTap,
   }) : super(key: key);
 
   @override
@@ -234,17 +239,19 @@ class _RiderOrderCardState extends State<RiderOrderCard>
                                 ),
                               ),
                               Text(
-                                'ABC Phones',
+                                widget.pickupLocation,
+                                overflow: TextOverflow.clip,
                                 style: TextStyle(
                                   fontSize: Dimensions.font14,
                                   fontWeight: FontWeight.w300,
                                 ),
                               ),
                               Text(
-                                'Bannex Plaza',
+                                widget.businessName,
+                                overflow: TextOverflow.clip,
                                 style: TextStyle(
                                   fontSize: Dimensions.font13,
-                                  fontWeight: FontWeight.w300,
+                                  fontWeight: FontWeight.w500,
                                 ),
                               ),
                             ],
@@ -255,7 +262,8 @@ class _RiderOrderCardState extends State<RiderOrderCard>
                   ),
                 ),
                 SizedBox(height: Dimensions.height20),
-                if (widget.status == 'pending' || widget.status == 'customer_location_set')...[
+                if (widget.status == 'pending' ||
+                    widget.status == 'customer_location_set') ...[
                   Row(
                     children: [
                       CustomButton(
@@ -265,8 +273,8 @@ class _RiderOrderCardState extends State<RiderOrderCard>
                           widget.onCancelDeliveryTap();
                         },
                         padding: EdgeInsets.symmetric(
-                            vertical: Dimensions.height10,
-                            horizontal: Dimensions.width20
+                          vertical: Dimensions.height10,
+                          horizontal: Dimensions.width20,
                         ),
                         backgroundColor: AppColors.primaryColor,
                       ),
@@ -284,14 +292,22 @@ class _RiderOrderCardState extends State<RiderOrderCard>
                       ),
                     ],
                   ),
-                ]
-                else if (widget.status == 'confirmed')...[
-                  CustomButton(text: 'Head to Map', onPressed: (){
-                    Get.toNamed(AppRoutes.riderTrackingScreen);
-                  })
+                ] else
+                  if (widget.status == 'confirmed' || widget.status == 'rider_accepted' || widget.status == 'package_picked_up' || widget.status == 'in_transit' || widget.status == 'arrived_at_location') ...[
+                    CustomButton(
+                      text: 'Head to Map',
+                      onPressed: () => widget.onTrackOrderTap?.call(),
+                    ),
+                  ],
+                if (widget.status == 'cancelled') ...[
+                  Text(
+                    'No Actions required: Order Cancelled',
+                    style: TextStyle(
+                      color: AppColors.error,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
                 ],
-                if (widget.status == 'cancelled')...[
-                  Text('No Actions required: Order Cancelled',style: TextStyle(color: AppColors.error,fontWeight: FontWeight.w500),)]
               ],
             ),
             crossFadeState: _isExpanded

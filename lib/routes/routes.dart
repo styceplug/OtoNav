@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:otonav/screens/auth/customer/create_account.dart';
 import 'package:otonav/screens/auth/customer/login_screen.dart';
@@ -17,8 +18,10 @@ import 'package:otonav/screens/splash/update_app_screen.dart';
 import 'package:otonav/screens/pages/user_pages/screens/orders.dart';
 import 'package:otonav/screens/pages/user_pages/screens/profile.dart';
 
+import '../model/order_model.dart';
 import '../screens/pages/user_pages/user_home_screen.dart';
 import '../screens/splash/splash_screen.dart';
+import '../widgets/snackbars.dart';
 
 class AppRoutes {
   //general
@@ -43,7 +46,7 @@ class AppRoutes {
   static const String customerProfilePage = '/customer-profile-screen';
   static const String customerOrdersPage = '/customer-orders-screen';
   static const String locationScreen = '/location-screen';
-  static const String trackingScreen = '/tracking-screen';
+  static const String customerTrackingScreen = '/customer-tracking-screen';
 
 
   //rider
@@ -75,13 +78,15 @@ class AppRoutes {
     GetPage(
       name: locationScreen,
       page: () {
-        return const LocationScreen();
+        return LocationScreen();
       },),
     GetPage(
-      name: trackingScreen,
+      name: customerTrackingScreen, // Define constant
       page: () {
-        return const TrackingScreen();
-      },),
+        String id = Get.arguments as String; // Pass ID
+        return CustomerTrackingPage(orderId: id);
+      },
+    ),
 
 
     //rider
@@ -93,8 +98,15 @@ class AppRoutes {
     GetPage(
       name: riderTrackingScreen,
       page: () {
-        return const TrackingPage();
-      },),
+        // We can pass the whole object via arguments for smooth transition,
+        // OR just the ID. Let's pass the ID.
+        // If you passed the object, you can extract the ID from it.
+        var args = Get.arguments;
+        String id = (args is OrderModel) ? args.id! : args.toString();
+
+        return TrackingPage(orderId: id);
+      },
+    ),
     GetPage(
       name: orderCompletedPage,
       page: () {

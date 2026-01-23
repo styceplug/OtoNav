@@ -31,6 +31,7 @@ class _CustomerHomePageState extends State<CustomerHomePage> {
   OrderController orderController = Get.find<OrderController>();
 
 
+  bool _isBannerVisible = true;
 
   IconData _getLocationIcon(String label) {
     final List<Map<String, dynamic>> locationTypes = [
@@ -54,7 +55,7 @@ class _CustomerHomePageState extends State<CustomerHomePage> {
     return match['icon'] as IconData;
   }
 
-  void _showLocationPicker(String orderId) {
+  void _showLocationPicker(String orderId) async {
     // 1. Get User Locations
     User? user = userController.userModel.value;
 
@@ -63,7 +64,8 @@ class _CustomerHomePageState extends State<CustomerHomePage> {
       CustomSnackBar.failure(
         message: "You have no saved locations. Please add one first.",
       );
-      Get.toNamed(AppRoutes.locationScreen);
+      await Get.toNamed(AppRoutes.locationScreen);
+      await userController.getUserProfile();
       return;
     }
 
@@ -332,7 +334,7 @@ class _CustomerHomePageState extends State<CustomerHomePage> {
                   ),
                   SizedBox(height: Dimensions.height20),
                   //widget for profile completeness
-                  if (status.progress < 1.0)
+                  if (status.progress < 1.0 && _isBannerVisible)
                     InkWell(
                       onTap: () {
                         if (status.route.isNotEmpty) {
@@ -370,8 +372,9 @@ class _CustomerHomePageState extends State<CustomerHomePage> {
                                 // Close button to dismiss temporarily
                                 InkWell(
                                   onTap: () {
-                                    // You could add a variable to hide this locally
-                                    // inside setState if user wants to dismiss it
+                                    setState(() {
+                                      _isBannerVisible = false;
+                                    });
                                   },
                                   child: Icon(
                                     CupertinoIcons.xmark,
@@ -383,7 +386,6 @@ class _CustomerHomePageState extends State<CustomerHomePage> {
                             SizedBox(height: Dimensions.height10),
                             Text(
                               status.message,
-                              // Dynamic Message ("Add delivery address")
                               style: TextStyle(
                                 color: Colors.grey[600],
                                 fontSize: 13,
@@ -494,8 +496,9 @@ class _CustomerHomePageState extends State<CustomerHomePage> {
                         }).toList(),
 
                       InkWell(
-                        onTap: () {
-                          Get.toNamed(AppRoutes.locationScreen);
+                        onTap: () async {
+                          await Get.toNamed(AppRoutes.locationScreen);
+                          await userController.getUserProfile();
                         },
                         child: Container(
                           height: Dimensions.height10 * 8,
@@ -585,8 +588,9 @@ class _CustomerHomePageState extends State<CustomerHomePage> {
                               onSetLocationTap: () {
                                 _showLocationPicker(order.id ?? '');
                               },
-                              onTrackOrderTap: () =>
-                                  Get.toNamed(AppRoutes.trackingScreen),
+                              onTrackOrderTap: () {
+                                Get.toNamed(AppRoutes.customerTrackingScreen, arguments: order.id!);
+                              },
                               onCallVendorTap: () async {
                                 String? phone = order.rider?.phoneNumber;
 

@@ -53,10 +53,10 @@ class AuthController extends GetxController {
     if (response.statusCode == 200 && response.body['success'] == true) {
 
       userModel.value = User.fromJson(response.body['data']);
-      await userController.getUserProfile();
-      update();
 
       CustomSnackBar.success(message: "Location saved successfully!");
+      await userController.getUserProfile();
+      update();
       Get.back();
     } else {
       CustomSnackBar.failure(message: response.body['message'] ?? "Failed to save location");

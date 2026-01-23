@@ -227,7 +227,7 @@ class _RiderHomePageState extends State<RiderHomePage> {
                               customerLocationPrecise: order.customerLocationPrecise ??
                                   'Customer Yet to Verify Data',
                                 customerLocationLabel: order.customerLocationLabel ?? '',
-                              pickupLocation: 'Yet to Setup',
+                              pickupLocation: order.organization?.address ?? 'Loading...',
                               onStartDeliveryTap: () {
                                 orderController.acceptOrder(order.id!);
                               },
@@ -236,8 +236,11 @@ class _RiderHomePageState extends State<RiderHomePage> {
                                   onConfirm: () {
                                     orderController.cancelOrder(order.id!);
                                   },
+
                                 );
                               },
+                              businessName: order.organization?.name ?? 'Loading...',
+
                             ),
                           );
                         }).toList(),

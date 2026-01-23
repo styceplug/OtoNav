@@ -27,6 +27,12 @@ class AppConstants {
   static String POST_RIDER_DECLINE_DELIVERY (String orderId) => '/api/orders/$orderId/cancel';
 
 
+  static String POST_PACKAGE_PICKED_UP(String id) => '/api/orders/$id/package-picked-up';
+  static String POST_START_DELIVERY(String id) => '/api/orders/$id/start-delivery';
+  static String POST_MARK_ARRIVED(String id) => '/api/orders/$id/mark-arrived';
+  static String POST_CONFIRM_DELIVERY(String id) => '/api/orders/$id/confirm-delivery';
+  static String GET_SINGLE_ORDER(String id) => '/api/orders/$id';
+
 
     static String getPngAsset(String image) {
     return 'assets/images/$image.png';
