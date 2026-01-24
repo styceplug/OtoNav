@@ -47,6 +47,13 @@ class _RiderOrderCardState extends State<RiderOrderCard>
     with SingleTickerProviderStateMixin {
   bool _isExpanded = false;
 
+  // Helper to check if location is valid
+  bool get _isLocationSet {
+    return widget.customerLocationPrecise.isNotEmpty &&
+        widget.customerLocationPrecise != 'Customer Yet to Verify Data' &&
+        widget.customerLocationPrecise != 'null';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -85,14 +92,14 @@ class _RiderOrderCardState extends State<RiderOrderCard>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      widget.orderId, // Used parameter
+                      widget.orderId,
                       style: TextStyle(
                         fontSize: Dimensions.font14,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
                     Text(
-                      widget.itemCount, // Used parameter
+                      widget.itemCount,
                       style: TextStyle(
                         fontSize: Dimensions.font13,
                         fontWeight: FontWeight.w300,
@@ -101,7 +108,6 @@ class _RiderOrderCardState extends State<RiderOrderCard>
                   ],
                 ),
                 Spacer(),
-                // Rotates the arrow based on state
                 AnimatedRotation(
                   turns: _isExpanded ? 0.5 : 0.0,
                   duration: const Duration(milliseconds: 200),
@@ -110,14 +116,12 @@ class _RiderOrderCardState extends State<RiderOrderCard>
               ],
             ),
           ),
-
           AnimatedCrossFade(
-            firstChild: Container(height: 0), // Collapsed state
+            firstChild: Container(height: 0),
             secondChild: Column(
               children: [
                 Divider(color: AppColors.grey4),
                 SizedBox(height: Dimensions.height10),
-
                 // Customer Row
                 Row(
                   children: [
@@ -176,6 +180,7 @@ class _RiderOrderCardState extends State<RiderOrderCard>
                   ),
                   child: Column(
                     children: [
+                      // DELIVERY LOCATION SECTION
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -197,19 +202,36 @@ class _RiderOrderCardState extends State<RiderOrderCard>
                                     fontWeight: FontWeight.w500,
                                   ),
                                 ),
-                                Text(
-                                  widget.customerLocationPrecise,
-                                  overflow: TextOverflow.clip,
+                                // LOGIC: If location is set, show it. Else show waiting text.
+                                _isLocationSet
+                                    ? Column(
+                                  crossAxisAlignment:
+                                  CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      widget.customerLocationPrecise,
+                                      overflow: TextOverflow.clip,
+                                      style: TextStyle(
+                                        fontSize: Dimensions.font14,
+                                        fontWeight: FontWeight.w300,
+                                      ),
+                                    ),
+                                    Text(
+                                      widget.customerLocationLabel,
+                                      style: TextStyle(
+                                        fontSize: Dimensions.font13,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
+                                )
+                                    : Text(
+                                  "Waiting for location...",
                                   style: TextStyle(
                                     fontSize: Dimensions.font14,
-                                    fontWeight: FontWeight.w300,
-                                  ),
-                                ),
-                                Text(
-                                  widget.customerLocationLabel,
-                                  style: TextStyle(
-                                    fontSize: Dimensions.font13,
-                                    fontWeight: FontWeight.w500,
+                                    fontWeight: FontWeight.w400,
+                                    color: Colors.orange,
+                                    fontStyle: FontStyle.italic,
                                   ),
                                 ),
                               ],
@@ -218,6 +240,7 @@ class _RiderOrderCardState extends State<RiderOrderCard>
                         ],
                       ),
                       SizedBox(height: Dimensions.height15),
+                      // PICKUP LOCATION SECTION
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -262,43 +285,106 @@ class _RiderOrderCardState extends State<RiderOrderCard>
                   ),
                 ),
                 SizedBox(height: Dimensions.height20),
+
+                // --- ACTION BUTTONS ---
                 if (widget.status == 'pending' ||
                     widget.status == 'customer_location_set') ...[
-                  Row(
-                    children: [
-                      CustomButton(
-                        text: 'Cancel',
+                  // IF LOCATION IS NOT SET: Show Waiting Indicator
+                  if (!_isLocationSet) ...[
+                    Container(
+                      width: double.infinity,
+                      padding: EdgeInsets.symmetric(
+                        vertical: Dimensions.height15,
+                        horizontal: Dimensions.width20,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(
+                            Dimensions.radius15),
+                        border: Border.all(
+                            color: Colors.orange.withOpacity(0.5)),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          SizedBox(
+                            width: 15,
+                            height: 15,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.orange,
+                            ),
+                          ),
+                          SizedBox(width: Dimensions.width10),
+                          Flexible(
+                            child: Text(
+                              "Waiting for customer to set location",
+                              style: TextStyle(
+                                color: Colors.orange[800],
+                                fontWeight: FontWeight.w600,
+                                fontSize: Dimensions.font14,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    SizedBox(height: Dimensions.height10),
+                    // Optional: You can still allow them to cancel if they wait too long
+                    Align(
+                      alignment: Alignment.center,
+                      child: TextButton(
                         onPressed: () {
-                          print('tapped');
                           widget.onCancelDeliveryTap();
                         },
-                        padding: EdgeInsets.symmetric(
-                          vertical: Dimensions.height10,
-                          horizontal: Dimensions.width20,
+                        child: Text(
+                          "Decline Order",
+                          style: TextStyle(color: Colors.red),
                         ),
-                        backgroundColor: AppColors.primaryColor,
                       ),
-                      SizedBox(width: Dimensions.width20),
-                      Expanded(
-                        child: CustomButton(
-                          text: 'Start Delivery',
+                    )
+                  ]
+                  // IF LOCATION IS SET: Show Normal Buttons
+                  else ...[
+                    Row(
+                      children: [
+                        CustomButton(
+                          text: 'Cancel',
                           onPressed: () {
-                            widget.onStartDeliveryTap();
+                            print('tapped');
+                            widget.onCancelDeliveryTap();
                           },
                           padding: EdgeInsets.symmetric(
                             vertical: Dimensions.height10,
+                            horizontal: Dimensions.width20,
+                          ),
+                          backgroundColor: AppColors.primaryColor,
+                        ),
+                        SizedBox(width: Dimensions.width20),
+                        Expanded(
+                          child: CustomButton(
+                            text: 'Start Delivery',
+                            onPressed: () {
+                              widget.onStartDeliveryTap();
+                            },
+                            padding: EdgeInsets.symmetric(
+                              vertical: Dimensions.height10,
+                            ),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                ] else
-                  if (widget.status == 'confirmed' || widget.status == 'rider_accepted' || widget.status == 'package_picked_up' || widget.status == 'in_transit' || widget.status == 'arrived_at_location') ...[
-                    CustomButton(
-                      text: 'Head to Map',
-                      onPressed: () => widget.onTrackOrderTap?.call(),
+                      ],
                     ),
                   ],
+                ] else if (widget.status == 'confirmed' ||
+                    widget.status == 'rider_accepted' ||
+                    widget.status == 'package_picked_up' ||
+                    widget.status == 'in_transit' ||
+                    widget.status == 'arrived_at_location') ...[
+                  CustomButton(
+                    text: 'Head to Map',
+                    onPressed: () => widget.onTrackOrderTap?.call(),
+                  ),
+                ],
                 if (widget.status == 'cancelled') ...[
                   Text(
                     'No Actions required: Order Cancelled',

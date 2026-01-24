@@ -98,13 +98,11 @@ class AppRoutes {
     GetPage(
       name: riderTrackingScreen,
       page: () {
-        // We can pass the whole object via arguments for smooth transition,
-        // OR just the ID. Let's pass the ID.
-        // If you passed the object, you can extract the ID from it.
+
         var args = Get.arguments;
         String id = (args is OrderModel) ? args.id! : args.toString();
 
-        return TrackingPage(orderId: id);
+        return RiderTrackingPage(orderId: id);
       },
     ),
     GetPage(

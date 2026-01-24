@@ -1,330 +1,243 @@
-import 'package:dio/dio.dart';
+import 'dart:math';
+
 import 'package:flutter/material.dart';
-import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:get/get.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:iconsax/iconsax.dart';
 import 'package:otonav/utils/app_constants.dart';
-import 'package:otonav/utils/dimensions.dart';
-import 'package:otonav/widgets/custom_button.dart';
-
 import '../../../controllers/order_controller.dart';
-import '../../../controllers/user_controller.dart';
+import '../../../helpers/route_helper.dart';
 import '../../../model/order_model.dart';
-import '../../../routes/routes.dart';
 import '../../../utils/colors.dart';
+import 'dart:async';
+import 'package:dio/dio.dart';
+import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 
-enum OrderStage { pickup, startTrip, inTransit, arrived }
 
-class TrackingPage extends StatefulWidget {
+class RiderTrackingPage extends StatefulWidget {
   final String orderId;
 
-  const TrackingPage({Key? key, required this.orderId}) : super(key: key);
+  const RiderTrackingPage({super.key, required this.orderId});
 
   @override
-  State<TrackingPage> createState() => _TrackingPageState();
+  State<RiderTrackingPage> createState() => _RiderTrackingPageState();
 }
 
-class _TrackingPageState extends State<TrackingPage> {
+class _RiderTrackingPageState extends State<RiderTrackingPage> {
   GoogleMapController? _mapController;
-  Set<Marker> _markers = {};
+
+  final Set<Marker> _markers = {};
+  Set<Polyline> _polylines = {};
+
   LatLng? _destinationLatLng;
   BitmapDescriptor? _riderIcon;
   BitmapDescriptor? _destIcon;
-  Set<Polyline> _polylines = {};
+
   String _distance = '';
   String _duration = '';
-  bool _isMapAssetsLoaded = false;
+  bool _assetsLoaded = false;
 
-  final String googleApiKey = "AIzaSyBHCvfuITDTbiNlpKh6mN75mt2o_eqTYow";
+  final RouteHelper _routeHelper = RouteHelper(
+    googleApiKey: "AIzaSyBHCvfuITDTbiNlpKh6mN75mt2o_eqTYow",
+  );
 
-  void _showSuccessPopup(OrderController controller, OrderModel order) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppColors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(Dimensions.radius20),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Image.asset(AppConstants.getPngAsset('delivered')),
-            SizedBox(height: Dimensions.height20),
-            Text(
-              "Mark Order as Delivered?",
-              style: TextStyle(
-                fontSize: Dimensions.font18,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            SizedBox(height: Dimensions.height20),
-            Container(
-              padding: EdgeInsets.symmetric(
-                horizontal: Dimensions.width20,
-                vertical: Dimensions.height20,
-              ),
-              decoration: BoxDecoration(
-                color: AppColors.cardColor,
-                borderRadius: BorderRadius.circular(Dimensions.radius15),
-              ),
-              child: Column(
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: Dimensions.width10,
-                          vertical: Dimensions.height10,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.accentColor,
-                          borderRadius: BorderRadius.circular(
-                            Dimensions.radius20,
-                          ),
-                        ),
-                        child: Icon(
-                          Iconsax.location,
-                          color: AppColors.white,
-                          size: Dimensions.iconSize16,
-                        ),
-                      ),
-                      SizedBox(width: Dimensions.width20),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Delivery Location',
-                              style: TextStyle(
-                                fontSize: Dimensions.font13,
-                                fontWeight: FontWeight.w300,
-                              ),
-                            ),
-                            Text(
-                              order.customerLocationPrecise ??
-                                  "Delivery Location",
-                              overflow: TextOverflow.clip,
-                              style: TextStyle(
-                                fontSize: Dimensions.font14,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: Dimensions.height10),
-                  Row(
-                    children: [
-                      Container(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: Dimensions.width10,
-                          vertical: Dimensions.height10,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.accentColor,
-                          borderRadius: BorderRadius.circular(
-                            Dimensions.radius20,
-                          ),
-                        ),
-                        child: Icon(
-                          Iconsax.location,
-                          color: AppColors.white,
-                          size: Dimensions.iconSize16,
-                        ),
-                      ),
-                      SizedBox(width: Dimensions.width20),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Pick Up Location',
-                              style: TextStyle(
-                                fontSize: Dimensions.font13,
-                                fontWeight: FontWeight.w300,
-                              ),
-                            ),
-                            Text(
-                              order.organization?.address ?? 'Loading...',
-                              overflow: TextOverflow.clip,
-                              style: TextStyle(
-                                fontSize: Dimensions.font14,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-
-            SizedBox(height: Dimensions.height20),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                IntrinsicWidth(
-                  child: CustomButton(
-                    text: "Get Back",
-                    onPressed: () {
-                      Navigator.pop(context);
-                    },
-                    textStyle: TextStyle(
-                      fontSize: Dimensions.font14,
-                      color: AppColors.white,
-                    ),
-                    padding: EdgeInsets.symmetric(
-                      horizontal: Dimensions.width15,
-                      vertical: Dimensions.height10,
-                    ),
-                  ),
-                ),
-
-                IntrinsicWidth(
-                  child: CustomButton(
-                    text: "Mark as Delivered",
-                    onPressed: () {
-                      Navigator.pop(context);
-                      controller.confirmDelivery(order.id!);
-                    },
-                    backgroundColor: Color(0xFF34C759),
-                    textStyle: TextStyle(
-                      fontSize: Dimensions.font14,
-                      color: AppColors.white,
-                    ),
-                    padding: EdgeInsets.symmetric(
-                      horizontal: Dimensions.width10,
-                      vertical: Dimensions.height10,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  late Worker _posWorker;
+  late Worker _orderWorker;
 
   @override
   void initState() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      Get.find<OrderController>().getOrderDetails(widget.orderId);
-    });
     super.initState();
+
+    final controller = Get.find<OrderController>();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await controller.startRiderTracking(widget.orderId);
+    });
+
+    _orderWorker = ever<OrderModel?>(controller.trackingOrder, (order) {
+      if (order == null) return;
+      _loadAssetsAndDestination(order);
+    });
+
+    _posWorker = ever<LatLng?>(controller.currentRiderLatLng, (pos) {
+      if (pos == null) return;
+
+      _riderIcon ??= BitmapDescriptor.defaultMarkerWithHue(
+        BitmapDescriptor.hueAzure,
+      );
+
+      _updateRiderMarker(pos);
+
+      // Trigger route calculation when we have both positions
+      if (_destinationLatLng != null) {
+        _fetchRoute(pos);
+      }
+    });
   }
 
-  Future<void> _loadMapAssets(OrderModel order) async {
-    if (_isMapAssetsLoaded) return; // Run once
+  @override
+  void dispose() {
+    _routeHelper.dispose();
+    _posWorker.dispose();
+    _orderWorker.dispose();
+    super.dispose();
+  }
 
-    // 1. Create Icons
-    _riderIcon = BitmapDescriptor.defaultMarkerWithHue(
-      BitmapDescriptor.hueAzure,
-    );
-    _destIcon = BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed);
+  Future<LatLng?> geocodeWithGoogle(String address, String apiKey) async {
+    try {
+      final url =
+          "https://maps.googleapis.com/maps/api/geocode/json?address=${Uri.encodeComponent(address)}&key=$apiKey";
 
-    // 2. Geocode Address from the fetched order
-    String address = order.customerLocationPrecise ?? "";
+      final res = await Dio().get(url);
+      final status = res.data['status'];
 
-    if (address.isNotEmpty) {
-      try {
-        List<Location> locations = await locationFromAddress(address);
-        if (locations.isNotEmpty) {
-          if (!mounted) return;
-          setState(() {
-            _destinationLatLng = LatLng(
-              locations.first.latitude,
-              locations.first.longitude,
-            );
-            _markers.add(
-              Marker(
-                markerId: MarkerId('destination'),
-                position: _destinationLatLng!,
-                icon: _destIcon!,
-                infoWindow: InfoWindow(title: "Customer Location"),
-              ),
-            );
-            _isMapAssetsLoaded = true;
-          });
-        }
-      } catch (e) {
-        print("Error geocoding address: $e");
+      if (status != "OK") {
+        print("❌ Geocode failed: $status");
+        return null;
       }
+
+      final loc = res.data['results'][0]['geometry']['location'];
+      return LatLng(loc['lat'], loc['lng']);
+    } catch (e) {
+      print("❌ Geocode exception: $e");
+      return null;
     }
   }
 
-  void _getRoute(LatLng riderPos) async {
-    if (_destinationLatLng == null) return;
+  Future<void> _loadAssetsAndDestination(OrderModel order) async {
+    if (_assetsLoaded) return;
+
+    _riderIcon = await BitmapDescriptor.asset(
+      const ImageConfiguration(size: Size(48, 48)),
+      AppConstants.getPngAsset('delivery-bike-2'),
+    );
+    _destIcon = await BitmapDescriptor.asset(
+      const ImageConfiguration(size: Size(48, 48)),
+      AppConstants.getPngAsset('masculine-user'),
+    );
+
+    final address = order.customerLocationPrecise ?? "";
+    if (address.isEmpty) {
+      setState(() => _assetsLoaded = true);
+      return;
+    }
 
     try {
-      // 1. Request Directions from Google
-      String url =
-          "https://maps.googleapis.com/maps/api/directions/json?origin=${riderPos.latitude},${riderPos.longitude}&destination=${_destinationLatLng!.latitude},${_destinationLatLng!.longitude}&mode=driving&key=$googleApiKey";
+      final dest = await geocodeWithGoogle(address, _routeHelper.googleApiKey);
+      if (dest == null) {
+        print("❌ Failed to geocode destination");
+        setState(() => _assetsLoaded = true);
+        return;
+      }
 
-      var response = await Dio().get(url);
+      if (!mounted) return;
 
-      if (response.data['status'] == 'OK') {
-        var route = response.data['routes'][0];
-        var leg = route['legs'][0];
-
-        // 2. Extract Duration & Distance
-        setState(() {
-          _distance = leg['distance']['text']; // e.g., "5.2 km"
-          _duration = leg['duration']['text']; // e.g., "15 mins"
-        });
-
-        // 3. Decode Polyline Points
-        PolylinePoints polylinePoints = PolylinePoints(apiKey: googleApiKey);
-        List<PointLatLng> result = PolylinePoints.decodePolyline(
-          route['overview_polyline']['points'],
+      setState(() {
+        _destinationLatLng = dest;
+        _markers.add(
+          Marker(
+            markerId: const MarkerId('destination'),
+            position: dest,
+            icon: _destIcon!,
+            infoWindow: const InfoWindow(title: "Delivery Location"),
+          ),
         );
+        _assetsLoaded = true;
+      });
 
-        List<LatLng> polylineCoordinates = result
-            .map((point) => LatLng(point.latitude, point.longitude))
-            .toList();
+      // Move camera to show both markers
+      _fitMapToBounds();
 
-        // 4. Draw the Blue Line
-        setState(() {
-          _polylines = {
-            Polyline(
-              polylineId: PolylineId("route"),
-              points: polylineCoordinates,
-              color: AppColors.primaryColor, // Or Colors.blue
-              width: 5,
-            ),
-          };
-        });
+      // Fetch initial route if rider position already exists
+      final riderPos = Get.find<OrderController>().currentRiderLatLng.value;
+      if (riderPos != null) {
+        _fetchRoute(riderPos);
       }
     } catch (e) {
-      print("Error fetching route: $e");
+      print("❌ Geocode error: $e");
+      setState(() => _assetsLoaded = true);
     }
+  }
+
+
+  double _calculateBearing(LatLng start, LatLng end) {
+    final lat1 = start.latitude * pi / 180;
+    final lat2 = end.latitude * pi / 180;
+    final dLon = (end.longitude - start.longitude) * pi / 180;
+
+    final y = sin(dLon) * cos(lat2);
+    final x = cos(lat1) * sin(lat2) - sin(lat1) * cos(lat2) * cos(dLon);
+
+    return (atan2(y, x) * 180 / pi + 360) % 360;
   }
 
   void _updateRiderMarker(LatLng pos) {
+    if (!mounted) return;
+
     setState(() {
       _markers.removeWhere((m) => m.markerId.value == 'rider');
-
       _markers.add(
         Marker(
-          markerId: MarkerId('rider'),
+          markerId: const MarkerId('rider'),
           position: pos,
           icon: _riderIcon!,
-          rotation: 0,
-          // You can calculate bearing if needed
-          infoWindow: InfoWindow(title: "You"),
+          infoWindow: const InfoWindow(title: "You"),
+          flat: true,
+          // rotation: _calculateBearing(oldPos, pos)
         ),
       );
     });
 
-    // Move Camera to follow rider
-    _mapController?.animateCamera(CameraUpdate.newLatLng(pos));
-    _getRoute(pos);
+    // Update camera to follow rider
+    _mapController?.animateCamera(
+      CameraUpdate.newLatLng(pos),
+    );
+  }
+
+  void _fetchRoute(LatLng origin) {
+    if (_destinationLatLng == null) return;
+
+    _routeHelper.debounceRoute(
+      origin: origin,
+      destination: _destinationLatLng!,
+      onResult: (distance, duration, points) {
+        if (!mounted) return;
+        setState(() {
+          _distance = distance;
+          _duration = duration;
+          _polylines = {
+            Polyline(
+              polylineId: const PolylineId("route"),
+              points: points,
+              width: 5,
+              color: AppColors.success,
+            ),
+          };
+        });
+      },
+    );
+  }
+
+  void _fitMapToBounds() {
+    if (_mapController == null) return;
+
+    final riderPos = Get.find<OrderController>().currentRiderLatLng.value;
+    if (riderPos == null || _destinationLatLng == null) return;
+
+    final bounds = LatLngBounds(
+      southwest: LatLng(
+        min(riderPos.latitude, _destinationLatLng!.latitude),
+        min(riderPos.longitude, _destinationLatLng!.longitude),
+      ),
+      northeast: LatLng(
+        max(riderPos.latitude, _destinationLatLng!.latitude),
+        max(riderPos.longitude, _destinationLatLng!.longitude),
+      ),
+    );
+
+    _mapController?.animateCamera(
+      CameraUpdate.newLatLngBounds(bounds, 100),
+    );
   }
 
   @override
@@ -332,88 +245,78 @@ class _TrackingPageState extends State<TrackingPage> {
     return Scaffold(
       body: GetBuilder<OrderController>(
         builder: (controller) {
-          OrderModel? currentOrder = controller.trackingOrder.value;
+          final order = controller.trackingOrder.value;
+          if (order == null) {
+            return const Center(child: CircularProgressIndicator());
+          }
 
-          String status = currentOrder?.status ?? 'unknown';
+          final status = order.status ?? 'unknown';
 
-          String buttonText = '';
+          String buttonText = '...';
           String titleText = '';
           String addressText = '';
 
           if (status == 'confirmed' || status == 'rider_accepted') {
             buttonText = 'Mark Package as Picked up';
             titleText = 'Pickup Address';
-            addressText = currentOrder?.organization?.address ?? "Pickup";
+            addressText = order.organization?.address ?? "Pickup";
           } else if (status == 'package_picked_up') {
             buttonText = 'Start Trip';
             titleText = 'Delivery Address';
-            addressText = currentOrder?.customerLocationPrecise ?? "";
+            addressText = order.customerLocationPrecise ?? "";
           } else if (status == 'in_transit') {
             buttonText = 'I have arrived';
             titleText = 'Delivery Address';
-            addressText = currentOrder?.customerLocationPrecise ?? "";
+            addressText = order.customerLocationPrecise ?? "";
           } else if (status == 'arrived_at_location') {
             buttonText = 'Mark as Delivered';
             titleText = 'Delivery Address';
-            addressText = currentOrder?.customerLocationPrecise ?? "";
+            addressText = order.customerLocationPrecise ?? "";
           } else {
-            buttonText = 'Loading...';
             titleText = 'Order Status: $status';
-            addressText = '';
           }
 
-          return Container(
-            height: Dimensions.screenHeight,
-            width: Dimensions.screenWidth,
+          final riderPos = controller.currentRiderLatLng.value;
+
+          return SafeArea(
+            bottom: true,
             child: Stack(
               children: [
-                SizedBox.expand(
-                  child: Obx(() {
-                    // Listen to Rider Location Updates from Controller
-                    LatLng? riderPos = controller.currentRiderLatLng.value;
-
-                    // If we have a new position, update map markers
-                    if (riderPos != null && _mapController != null) {
-                      // We use a post-frame callback to avoid build conflicts
-                      WidgetsBinding.instance.addPostFrameCallback((_) {
-                        _updateRiderMarker(riderPos);
-                      });
-                    }
-
-                    return GoogleMap(
-                      initialCameraPosition: CameraPosition(
-                        target: riderPos ?? LatLng(37.7749, -122.4194),
-                        zoom: 15,
-                      ),
-                      polylines: _polylines,
-                      markers: _markers,
-                      myLocationEnabled: false,
-                      // We render our own custom marker
-                      zoomControlsEnabled: false,
-                      onMapCreated: (GoogleMapController controller) {
-                        _mapController = controller;
-                        if (riderPos != null) {
-                          _updateRiderMarker(riderPos);
-                        }
-                      },
-                    );
-                  }),
-                ),
-
-                Positioned(
-                  bottom: Dimensions.height10 * 8,
-                  left: Dimensions.width20,
-                  right: Dimensions.width20,
-                  child: Container(
-                    width: Dimensions.screenWidth,
-                    padding: EdgeInsets.symmetric(
-                      horizontal: Dimensions.width20,
-                      vertical: Dimensions.height30,
+                Positioned.fill(
+                  child: GoogleMap(
+                    initialCameraPosition: CameraPosition(
+                      target: riderPos ??
+                          _destinationLatLng ??
+                          const LatLng(6.5244, 3.3792),
+                      zoom: 14,
                     ),
+                    markers: _markers,
+                    polylines: _polylines,
+                    zoomControlsEnabled: false,
+                    myLocationEnabled: true,
+                    myLocationButtonEnabled: true,
+                    onMapCreated: (c) {
+                      _mapController = c;
+                      // Fit bounds once map is created if we have both positions
+                      if (riderPos != null && _destinationLatLng != null) {
+                        Future.delayed(const Duration(milliseconds: 500), () {
+                          _fitMapToBounds();
+                        });
+                      }
+                    },
+                  ),
+                ),
+            
+                Positioned(
+                  bottom: 30,
+                  left: 20,
+                  right: 20,
+                  child: Container(
+                    padding: const EdgeInsets.all(18),
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(Dimensions.radius20),
                       color: Colors.white,
-                      boxShadow: [
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: const [
                         BoxShadow(
                           color: Colors.black12,
                           blurRadius: 10,
@@ -426,91 +329,63 @@ class _TrackingPageState extends State<TrackingPage> {
                       children: [
                         Text(
                           titleText,
-                          style: TextStyle(
-                            fontSize: Dimensions.font16,
+                          style: const TextStyle(
+                            fontSize: 16,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
-                        SizedBox(height: Dimensions.height10),
+                        const SizedBox(height: 8),
                         Row(
                           children: [
-                            Icon(
-                              Iconsax.location,
-                              size: Dimensions.iconSize16,
-                              color: AppColors.primaryColor,
-                            ),
-                            SizedBox(width: Dimensions.width5),
-                            Text(
-                              addressText,
-                              style: TextStyle(
-                                fontSize: Dimensions.font12,
-                                fontWeight: FontWeight.w400,
+                            const Icon(Icons.location_on, size: 16),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                addressText,
+                                style: const TextStyle(fontSize: 12),
                               ),
                             ),
                           ],
                         ),
                         if (_duration.isNotEmpty) ...[
-                          SizedBox(height: Dimensions.height20),
+                          const SizedBox(height: 12),
                           Container(
-                            padding: EdgeInsets.symmetric(
+                            padding: const EdgeInsets.symmetric(
                               horizontal: 10,
-                              vertical: 5,
+                              vertical: 6,
                             ),
                             decoration: BoxDecoration(
-                              color: Colors.black, // Dark badge
+                              color: Colors.black,
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            child: Row(
-                              children: [
-                                Icon(
-                                  Icons.timer,
-                                  color: Colors.white,
-                                  size: 12,
-                                ),
-                                SizedBox(width: 5),
-                                Text(
-                                  "$_duration • $_distance",
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
+                            child: Text(
+                              "$_duration • $_distance",
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
                         ],
-                        SizedBox(height: Dimensions.height20),
-                        CustomButton(
-                          text: buttonText,
-                          onPressed: () {
-                            // Pass the CURRENT order status logic
-                            String userId =
-                                Get.find<UserController>().userModel.value!.id!;
-                            String? orderId = currentOrder?.id!;
-
-                            if (status == 'confirmed' ||
-                                status == 'rider_accepted') {
-                              controller.markPackagePickedUp(orderId!);
-                            } else if (status == 'package_picked_up') {
-                              controller.startDelivery(orderId!, userId);
-                            } else if (status == 'in_transit') {
-                              controller.markArrived(orderId!);
-                            } else if (status == 'arrived_at_location') {
-                              _showSuccessPopup(controller, currentOrder!);
-                            }
-                          },
-                          padding: EdgeInsets.symmetric(
-                            vertical: Dimensions.height10,
-                          ),
-                          backgroundColor: AppColors.accentColor,
-                          textStyle: TextStyle(
-                            fontSize: Dimensions.font14,
-                            color: Colors.white,
-                            fontWeight: FontWeight.w500,
-                          ),
-                          borderRadius: BorderRadius.circular(
-                            Dimensions.radius20,
+                        const SizedBox(height: 14),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: () async {
+                              final orderId = order.id!;
+                              if (status == 'confirmed' ||
+                                  status == 'rider_accepted') {
+                                await controller.markPackagePickedUp(orderId);
+                              } else if (status == 'package_picked_up') {
+                                await controller.startDelivery(orderId);
+                              } else if (status == 'in_transit') {
+                                await controller.markArrived(orderId);
+                              } else if (status == 'arrived_at_location') {
+                                await controller.confirmDelivery(orderId);
+                              }
+                            },
+                            child: Text(buttonText),
                           ),
                         ),
                       ],

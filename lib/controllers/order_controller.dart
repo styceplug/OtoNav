@@ -20,14 +20,14 @@ class OrderController extends GetxController {
 
   OrderController({required this.orderRepo});
 
-  List<OrderModel> _allOrders = [];
+  RxList<OrderModel> _allOrders = <OrderModel>[].obs;
   GlobalLoaderController loader = Get.find<GlobalLoaderController>();
-  WebSocketChannel? _channel;
-  StreamSubscription<Position>? _positionStream;
   Rx<LatLng?> currentRiderLatLng = Rx<LatLng?>(null);
   Rx<OrderModel?> trackingOrder = Rx<OrderModel?>(null);
-  AppController  appController = Get.find<AppController>();
-
+  AppController appController = Get.find<AppController>();
+  WebSocketChannel? _channel;
+  StreamSubscription? _wsSub;
+  StreamSubscription<Position>? _posSub;
 
   @override
   void onInit() {
@@ -39,180 +39,239 @@ class OrderController extends GetxController {
 
   @override
   void onClose() {
-    _stopTracking();
+    stopTracking();
     super.onClose();
   }
 
+  LatLng? parseLatLng(String? s) {
+    if (s == null || !s.contains(',')) return null;
+    final parts = s.split(',');
+    if (parts.length < 2) return null;
 
+    double? a = double.tryParse(parts[0].trim());
+    double? b = double.tryParse(parts[1].trim());
+    if (a == null || b == null) return null;
 
-
-
-
-  Future<void> startCustomerTracking(String orderId) async {
-    // 1. Fetch latest order details first
-    await getOrderDetails(orderId);
-
-    // 2. Get User ID for connection
-    String userId = Get.find<UserController>().userModel.value!.id!;
-
-    // 3. Connect to WebSocket as 'customer'
-    // Ensure you use the correct URL format from your docs
-    final wsUrl = Uri.parse('wss://otonav-backend-production.up.railway.app?orderId=$orderId&userId=$userId&role=customer');
-
-    print("🔌 Connecting to WS: $wsUrl");
-
-    try {
-      _channel = IOWebSocketChannel.connect(wsUrl);
-
-      // 4. Listen for INCOMING messages (Rider's location)
-      _channel!.stream.listen((message) {
-        print("📩 Received WS Message: $message");
-
-        try {
-          final data = jsonDecode(message);
-
-          if (data['type'] == 'location_update' && data['location'] != null) {
-            // Parse "lat,lng" string
-            String loc = data['location'];
-            List<String> coords = loc.split(',');
-            double lat = double.parse(coords[0]);
-            double lng = double.parse(coords[1]);
-
-            // Update the Observable (This triggers the Map UI update)
-            currentRiderLatLng.value = LatLng(lat, lng);
-          }
-
-          if (data['type'] == 'status_update') {
-            getOrderDetails(orderId);
-          }
-        } catch (e) {
-          print("Error parsing WS message: $e");
-        }
-      }, onError: (error) {
-        print("WS Error: $error");
-      }, onDone: () {
-        print("WS Closed");
-      });
-
-    } catch (e) {
-      print("WS Connection failed: $e");
+    double lat = a, lng = b;
+    if (lat.abs() > 90 || lng.abs() > 180) {
+      lat = b;
+      lng = a;
     }
+    return LatLng(lat, lng);
   }
-  void stopTracking() {
-    _channel?.sink.close();
-    _channel = null;
-    print("🛑 Tracking Stopped");
+
+  Uri _wsUrl({
+    required String orderId,
+    required String userId,
+    required String role,
+  }) {
+    return Uri.parse(
+      'wss://otonav-backend-production.up.railway.app/ws'
+      '?orderId=$orderId&userId=$userId&role=$role',
+    );
   }
 
   Future<void> getOrderDetails(String orderId) async {
-    trackingOrder.value = null;
-    print('fetching order details....');
+    final res = await orderRepo.getOrderDetails(orderId);
 
-    Response response = await orderRepo.getOrderDetails(orderId);
+    if (res.statusCode == 200 && res.body['success'] == true) {
+      final order = OrderModel.fromJson(res.body['data']);
+      trackingOrder.value = order;
 
-    if (response.statusCode == 200 && response.body['success'] == true) {
-      trackingOrder.value = OrderModel.fromJson(response.body['data']);
+      final rider = parseLatLng(order.riderCurrentLocation);
+      if (rider != null) {
+        currentRiderLatLng.value = rider; // 👈 seed initial marker
+      }
+
       update();
     } else {
-      CustomSnackBar.failure(message: response.body['message'] ?? "Failed to load order");
+      CustomSnackBar.failure(
+        message: res.body['message'] ?? "Failed to load order",
+      );
+    }
+  }
+
+  void _connectWs({
+    required String orderId,
+    required String userId,
+    required String role,
+  }) {
+    stopTracking();
+
+    final url = _wsUrl(orderId: orderId, userId: userId, role: role);
+    print("🔌 Connecting WS: $url");
+
+    _channel = IOWebSocketChannel.connect(url);
+
+    _wsSub = _channel!.stream.listen(
+      (message) {
+        print("📩 WS: $message");
+        _handleWsMessage(orderId, message);
+      },
+      onError: (e) => print("❌ WS Error: $e"),
+      onDone: () => print("🧯 WS Closed"),
+      cancelOnError: false,
+    );
+  }
+
+  void _handleWsMessage(String orderId, dynamic message) {
+    try {
+      final data = jsonDecode(message);
+
+      if (data is! Map) return;
+
+      if (data['type'] == 'location_update') {
+        final rider = parseLatLng(data['location']);
+        if (rider != null) {
+          currentRiderLatLng.value = rider;
+        }
+        return;
+      }
+
+      if (data['type'] == 'status_update') {
+        getOrderDetails(orderId);
+        return;
+      }
+    } catch (e) {
+      print("⚠️ WS Parse Error: $e");
+    }
+  }
+
+  void _sendCoords(LatLng pos) {
+    if (_channel == null) return;
+    _channel!.sink.add(
+      jsonEncode({"coords": "${pos.latitude},${pos.longitude}"}),
+    );
+    print("📤 WS SEND coords: ${pos.latitude},${pos.longitude}");
+    final payload = jsonEncode({"coords": "${pos.latitude},${pos.longitude}"});
+    print("📤 WS SEND -> $payload");
+  }
+
+  Future<bool> _ensureLocationPermission() async {
+    LocationPermission perm = await Geolocator.checkPermission();
+
+    if (perm == LocationPermission.denied) {
+      perm = await Geolocator.requestPermission();
+    }
+
+    if (perm == LocationPermission.denied ||
+        perm == LocationPermission.deniedForever) {
+      CustomSnackBar.failure(message: "Location permission is required.");
+      return false;
+    }
+    return true;
+  }
+
+  void _startRiderStream() {
+    const settings = LocationSettings(
+      accuracy: LocationAccuracy.high,
+      distanceFilter: 10,
+    );
+
+    _posSub?.cancel();
+    _posSub = Geolocator.getPositionStream(locationSettings: settings).listen((
+      p,
+    ) {
+      final pos = LatLng(p.latitude, p.longitude);
+
+      // update UI
+      currentRiderLatLng.value = pos;
+
+      // send to backend
+      _sendCoords(pos);
+    });
+  }
+
+  Future<void> startCustomerTracking(String orderId) async {
+    await getOrderDetails(orderId);
+
+    final userId = Get.find<UserController>().userModel.value!.id!;
+    _connectWs(orderId: orderId, userId: userId, role: 'customer');
+  }
+
+  Future<void> startRiderTracking(String orderId) async {
+    final ok = await _ensureLocationPermission();
+    if (!ok) return;
+
+    await getOrderDetails(orderId);
+
+    final userId = Get.find<UserController>().userModel.value!.id!;
+    _connectWs(orderId: orderId, userId: userId, role: 'rider');
+    _startRiderStream();
+  }
+
+  void stopTracking() {
+    _posSub?.cancel();
+    _posSub = null;
+
+    _wsSub?.cancel();
+    _wsSub = null;
+
+    _channel?.sink.close();
+    _channel = null;
+
+    print("🛑 Tracking stopped");
+  }
+
+  Future<void> markPackagePickedUp(String orderId) async {
+    loader.showLoader();
+    final res = await orderRepo.markPackagePickedUp(orderId);
+    loader.hideLoader();
+
+    if (res.statusCode == 200 && res.body['success'] == true) {
+      await getOrderDetails(orderId);
+      CustomSnackBar.success(message: "Package picked up.");
+    } else {
+      CustomSnackBar.failure(message: res.body['message']);
+    }
+  }
+
+  Future<void> startDelivery(String orderId) async {
+    loader.showLoader();
+    final res = await orderRepo.startDelivery(orderId);
+    loader.hideLoader();
+
+    if (res.statusCode == 200 && res.body['success'] == true) {
+      await getOrderDetails(orderId);
+      CustomSnackBar.success(message: "Trip started.");
+    } else {
+      CustomSnackBar.failure(message: res.body['message']);
+    }
+  }
+
+  Future<void> markArrived(String orderId) async {
+    loader.showLoader();
+    final res = await orderRepo.markArrived(orderId);
+    loader.hideLoader();
+
+    if (res.statusCode == 200 && res.body['success'] == true) {
+      await getOrderDetails(orderId);
+      CustomSnackBar.success(message: "Arrived at location.");
+    } else {
+      CustomSnackBar.failure(message: res.body['message']);
     }
   }
 
   Future<void> confirmDelivery(String orderId) async {
     loader.showLoader();
-    Response response = await orderRepo.confirmDelivery(orderId);
+    final res = await orderRepo.confirmDelivery(orderId);
     loader.hideLoader();
 
-    if (response.statusCode == 200 && response.body['success'] == true) {
-      await getOrders();
-      CustomSnackBar.success(message: "Delivery Confirmed!");
-      Get.offNamed(AppRoutes.riderHomeScreen);
+    if (res.statusCode == 200 && res.body['success'] == true) {
+      stopTracking();
+      CustomSnackBar.success(message: "Delivery confirmed!");
+      Get.offAllNamed(AppRoutes.riderHomeScreen);
       appController.changeCurrentAppPage(0);
     } else {
-      CustomSnackBar.failure(message: response.body['message']);
+      CustomSnackBar.failure(message: res.body['message']);
     }
   }
 
-  void _stopTracking() {
-    _positionStream?.cancel();
-    _channel?.sink.close();
-    _positionStream = null;
-    _channel = null;
-    print("🛑 Tracking Stopped");
-  }
+  Future<void> startOwnerTracking(String orderId) async {
+    await getOrderDetails(orderId);
 
-  Future<void> markArrived(String orderId) async {
-    loader.showLoader();
-    Response response = await orderRepo.markArrived(orderId);
-    loader.hideLoader();
-
-    if (response.statusCode == 200 && response.body['success'] == true) {
-      await getOrders();
-      _stopTracking();
-      CustomSnackBar.success(message: "You have arrived at the destination.");
-    } else {
-      CustomSnackBar.failure(message: response.body['message']);
-    }
-  }
-
-  void _startLocationUpdates() {
-    const LocationSettings locationSettings = LocationSettings(
-      accuracy: LocationAccuracy.high,
-      distanceFilter: 10, // Update every 10 meters
-    );
-
-    _positionStream = Geolocator.getPositionStream(locationSettings: locationSettings)
-        .listen((Position position) {
-
-      // 1. Update the Observable for the UI
-      currentRiderLatLng.value = LatLng(position.latitude, position.longitude);
-
-      // 2. Send to WebSocket (Existing logic)
-      if (_channel != null) {
-        final msg = jsonEncode({
-          "coords": "${position.latitude},${position.longitude}"
-        });
-        _channel!.sink.add(msg);
-      }
-    });
-  }
-
-  void _initWebSocket(String orderId, String userId) {
-
-    final wsUrl = Uri.parse('wss://otonav-backend-production.up.railway.app?orderId=$orderId&userId=$userId&role=rider');
-
-    _channel = IOWebSocketChannel.connect(wsUrl);
-
-    // 3. Start Geolocation Stream
-    _startLocationUpdates();
-  }
-
-  Future<void> startDelivery(String orderId, String userId) async {
-    loader.showLoader();
-    Response response = await orderRepo.startDelivery(orderId);
-    loader.hideLoader();
-
-    if (response.statusCode == 200 && response.body['success'] == true) {
-      await getOrders();
-      CustomSnackBar.success(message: "Delivery started. Location sharing active.");
-
-      _initWebSocket(orderId, userId);
-    } else {
-      CustomSnackBar.failure(message: response.body['message']);
-    }
-  }
-
-  Future<void> markPackagePickedUp(String orderId) async {
-    loader.showLoader();
-    Response response = await orderRepo.markPackagePickedUp(orderId);
-    loader.hideLoader();
-
-    if (response.statusCode == 200 && response.body['success'] == true) {
-      await getOrders();
-      CustomSnackBar.success(message: "Package marked as picked up.");
-    } else {
-      CustomSnackBar.failure(message: response.body['message']);
-    }
+    final userId = Get.find<UserController>().userModel.value!.id!;
+    _connectWs(orderId: orderId, userId: userId, role: "owner");
   }
 
   Future<void> acceptOrder(String orderId) async {
@@ -248,7 +307,7 @@ class OrderController extends GetxController {
         );
         await getOrders();
         OrderModel order = _allOrders.firstWhere((o) => o.id == orderId);
-        Get.toNamed(AppRoutes.riderTrackingScreen,arguments: order);
+        Get.toNamed(AppRoutes.riderTrackingScreen, arguments: order);
       } else {
         CustomSnackBar.failure(
           message: response.body['message'] ?? "Failed to accept order",
@@ -313,12 +372,12 @@ class OrderController extends GetxController {
 
   Future<void> getOrders() async {
     loader.showLoader();
-    update();
 
     Response response = await orderRepo.getOrders();
 
     if (response.statusCode == 200 && response.body['success'] == true) {
-      _allOrders = [];
+      // Clear and update RxList - this triggers Obx to rebuild
+      _allOrders.clear();
       List<dynamic> data = response.body['data'];
       data.forEach((element) {
         _allOrders.add(OrderModel.fromJson(element));
@@ -328,7 +387,6 @@ class OrderController extends GetxController {
     }
 
     loader.hideLoader();
-    update();
   }
 
   List<OrderModel> get pendingOrders {
@@ -341,7 +399,11 @@ class OrderController extends GetxController {
   List<OrderModel> get confirmedOrders {
     return _allOrders.where((order) {
       String s = order.status?.toLowerCase() ?? '';
-      return s == 'confirmed' || s == 'rider_accepted' || s == 'package_picked_up' || s == 'in_transit' || s == 'arrived_at_location';
+      return s == 'confirmed' ||
+          s == 'rider_accepted' ||
+          s == 'package_picked_up' ||
+          s == 'in_transit' ||
+          s == 'arrived_at_location';
     }).toList();
   }
 
