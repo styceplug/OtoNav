@@ -8,6 +8,7 @@ import 'package:otonav/screens/auth/verify_otp.dart';
 import 'package:otonav/screens/edit_profile.dart';
 import 'package:otonav/screens/in_app/customer/location_screen.dart';
 import 'package:otonav/screens/in_app/customer/tracking_screen.dart';
+import 'package:otonav/screens/in_app/notification_screen.dart';
 import 'package:otonav/screens/in_app/riders/order_completed.dart';
 import 'package:otonav/screens/in_app/riders/tracking_page.dart';
 import 'package:otonav/screens/pages/rider_pages/rider_home_screen.dart';
@@ -30,6 +31,7 @@ class AppRoutes {
   static const String updateAppScreen = '/update-app-screen';
   static const String noInternetScreen = '/no-internet-screen';
   static const String getStartedScreen = '/get-started-screen';
+  static const String notificationScreen = '/notification-screen';
 
   //auth
   static const String riderLoginScreen = '/rider-login-screen';
@@ -185,6 +187,12 @@ class AppRoutes {
       name: getStartedScreen,
       page: () {
         return const GetStarted();
+      },
+    ),
+    GetPage(
+      name: notificationScreen,
+      page: () {
+        return const NotificationScreen();
       },
     ),
   ];

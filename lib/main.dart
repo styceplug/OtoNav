@@ -1,3 +1,4 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
@@ -7,6 +8,7 @@ import 'package:otonav/utils/colors.dart';
 import 'package:otonav/utils/dimensions.dart';
 import 'package:otonav/widgets/app_loading_overlay.dart';
 import 'controllers/app_controller.dart';
+import 'firebase_options.dart';
 import 'helpers/dependencies.dart' as dep;
 import 'helpers/global_loader_controller.dart';
 import 'helpers/version_service.dart';
@@ -20,6 +22,11 @@ Future<void> main() async {
   Get.put(GlobalLoaderController(), permanent: true);
 
   HardwareKeyboard.instance.clearState();
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
   runApp(const MyApp());
 }
 

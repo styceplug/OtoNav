@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "621376031524",
+    "project_id": "otonav-cbc0b",
+    "storage_bucket": "otonav-cbc0b.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:621376031524:android:ab770384af666328d441b1",
+        "android_client_info": {
+          "package_name": "com.project.otonav.otonav"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDibxUYjvHox2a9f0ECJvJX8IHrrbTyEgc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

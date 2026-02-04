@@ -72,16 +72,21 @@ class _RiderHomePageState extends State<RiderHomePage> {
                         ),
                       ],
                     ),
-                    Container(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: Dimensions.width20,
-                        vertical: Dimensions.height20,
+                    InkWell(
+                      onTap: (){
+                        Get.toNamed(AppRoutes.notificationScreen);
+                      },
+                      child: Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: Dimensions.width20,
+                          vertical: Dimensions.height20,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.cardColor,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(Iconsax.notification),
                       ),
-                      decoration: BoxDecoration(
-                        color: AppColors.cardColor,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(Iconsax.notification),
                     ),
                   ],
                 ),
