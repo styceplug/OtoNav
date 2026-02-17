@@ -1,7 +1,9 @@
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:otonav/helpers/push_notification.dart';
 import 'package:otonav/routes/routes.dart';
 import 'package:otonav/utils/app_constants.dart';
 import 'package:otonav/utils/colors.dart';
@@ -26,6 +28,9 @@ Future<void> main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+  await NotificationService().initialize();
 
   runApp(const MyApp());
 }

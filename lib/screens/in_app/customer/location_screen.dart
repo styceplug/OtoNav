@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:otonav/controllers/auth_controller.dart';
 import 'package:otonav/controllers/user_controller.dart';
 import 'package:otonav/utils/dimensions.dart';
 import 'package:otonav/widgets/custom_button.dart';
 import 'package:otonav/widgets/custom_textfield.dart';
 
+import '../../../helpers/route_helper.dart';
 import '../../../model/user_model.dart';
 import '../../../utils/app_constants.dart';
 import '../../../utils/colors.dart';
@@ -24,10 +26,18 @@ class LocationScreen extends StatefulWidget {
 class _LocationScreenState extends State<LocationScreen> {
   final TextEditingController nameController = TextEditingController();
   final TextEditingController locationController = TextEditingController();
+
   UserController userController = Get.find<UserController>();
   AuthController authController = Get.find<AuthController>();
+  final OSMHelper _osmHelper = OSMHelper();
+  final MapController _mapController = MapController();
+
   bool isLoadingLocation = false;
   String? selectedName;
+  LatLng? _currentPosition; // latlong2 LatLng
+
+  // Default start position (e.g., Lagos)
+  final LatLng _initialPosition = const LatLng(6.5244, 3.3792);
 
   final List<Map<String, dynamic>> locationTypes = [
     {'name': 'Home', 'icon': Icons.home_rounded},
@@ -41,9 +51,14 @@ class _LocationScreenState extends State<LocationScreen> {
     {'name': 'Chill Spot', 'icon': Icons.local_cafe_rounded},
   ];
 
-  GoogleMapController? mapController;
-  Set<Marker> markers = {};
-  LatLng initialPosition = const LatLng(37.42796133580664, -122.085749655962);
+  @override
+  void initState() {
+    super.initState();
+    // Optional: Get location immediately on load
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      getCurrentLocation();
+    });
+  }
 
   @override
   void dispose() {
@@ -53,30 +68,17 @@ class _LocationScreenState extends State<LocationScreen> {
   }
 
   IconData _getLocationIcon(String label) {
-    final List<Map<String, dynamic>> locationTypes = [
-      {'name': 'Home', 'icon': Icons.home_rounded},
-      {'name': 'Office', 'icon': Icons.work_rounded},
-      {'name': "Partner's Place", 'icon': Icons.favorite_rounded},
-      {'name': "Parents' House", 'icon': Icons.family_restroom_rounded},
-      {'name': 'Gym', 'icon': Icons.fitness_center_rounded},
-      {'name': 'Church', 'icon': Icons.church_rounded},
-      {'name': 'School', 'icon': Icons.school_rounded},
-      {'name': 'Market', 'icon': Icons.shopping_cart_rounded},
-      {'name': 'Chill Spot', 'icon': Icons.local_cafe_rounded},
-    ];
-
     var match = locationTypes.firstWhere(
-      (element) =>
-          element['name'].toString().toLowerCase() == label.toLowerCase(),
+          (element) => element['name'].toString().toLowerCase() == label.toLowerCase(),
       orElse: () => {'icon': Icons.location_on_rounded},
     );
-
     return match['icon'] as IconData;
   }
 
   void showLocationNameModal() {
     showModalBottomSheet(
       context: context,
+      backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -88,10 +90,7 @@ class _LocationScreenState extends State<LocationScreen> {
             children: [
               Text(
                 "Choose a Label",
-                style: TextStyle(
-                  fontSize: Dimensions.font18,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontSize: Dimensions.font18, fontWeight: FontWeight.bold),
               ),
               SizedBox(height: Dimensions.height10),
               Expanded(
@@ -101,20 +100,14 @@ class _LocationScreenState extends State<LocationScreen> {
                     final item = locationTypes[index];
                     return ListTile(
                       leading: Container(
-                        padding: EdgeInsets.all(8),
+                        padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
                           color: AppColors.primaryColor.withOpacity(0.1),
                           shape: BoxShape.circle,
                         ),
-                        child: Icon(
-                          item['icon'],
-                          color: AppColors.primaryColor,
-                        ),
+                        child: Icon(item['icon'], color: AppColors.primaryColor),
                       ),
-                      title: Text(
-                        item['name'],
-                        style: TextStyle(fontSize: Dimensions.font16),
-                      ),
+                      title: Text(item['name'], style: TextStyle(fontSize: Dimensions.font16)),
                       onTap: () {
                         setState(() {
                           selectedName = item['name'];
@@ -133,16 +126,17 @@ class _LocationScreenState extends State<LocationScreen> {
   }
 
   Future<void> getCurrentLocation() async {
-    setState(() {
-      isLoadingLocation = true;
-    });
+    setState(() => isLoadingLocation = true);
 
     try {
-      // 1. Check Permissions (same as before)
+      // 1. Check Permissions
       LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
-        if (permission == LocationPermission.denied) return;
+        if (permission == LocationPermission.denied) {
+          setState(() => isLoadingLocation = false);
+          return;
+        }
       }
 
       // 2. Get Position
@@ -152,41 +146,30 @@ class _LocationScreenState extends State<LocationScreen> {
 
       LatLng currentLatLng = LatLng(position.latitude, position.longitude);
 
-      // 3. Update Map Camera and Marker
-      mapController?.animateCamera(
-        CameraUpdate.newLatLngZoom(currentLatLng, 15),
+      setState(() {
+        _currentPosition = currentLatLng;
+      });
+
+      // 3. Move Map
+      _mapController.move(currentLatLng, 16.0);
+
+      // 4. Reverse Geocode (Get Address Text) via OSMHelper
+      String? address = await _osmHelper.getAddressFromCoordinates(
+          position.latitude,
+          position.longitude
       );
 
-      setState(() {
-        markers = {
-          Marker(
-            markerId: MarkerId('currentLocation'),
-            position: currentLatLng,
-            infoWindow: InfoWindow(title: 'You are here'),
-          ),
-        };
-      });
-
-      // 4. Get Address Text (Geocoding)
-      try {
-        List<Placemark> placemarks = await placemarkFromCoordinates(
-          position.latitude,
-          position.longitude,
-        );
-        if (placemarks.isNotEmpty) {
-          Placemark place = placemarks[0];
-          locationController.text =
-              "${place.street}, ${place.locality}, ${place.country}";
-        }
-      } catch (e) {
+      if (address != null) {
+        locationController.text = address;
+      } else {
         locationController.text = "${position.latitude}, ${position.longitude}";
       }
+
     } catch (e) {
-      print(e);
+      print("Error getting location: $e");
+      CustomSnackBar.failure(message: "Could not fetch location");
     } finally {
-      setState(() {
-        isLoadingLocation = false;
-      });
+      setState(() => isLoadingLocation = false);
     }
   }
 
@@ -197,12 +180,11 @@ class _LocationScreenState extends State<LocationScreen> {
         if (userController.userModel.value == null) {
           return Center(child: Padding(
             padding: EdgeInsets.symmetric(horizontal: Dimensions.width20),
-            child: LinearProgressIndicator(
-              color: AppColors.accentColor,
-            ),
+            child: LinearProgressIndicator(color: AppColors.accentColor),
           ));
         }
         User user = userController.userModel.value!;
+
         return Container(
           padding: EdgeInsets.fromLTRB(
             Dimensions.width20,
@@ -216,26 +198,16 @@ class _LocationScreenState extends State<LocationScreen> {
               children: [
                 Text(
                   'Add New Locations',
-                  style: TextStyle(
-                    fontSize: Dimensions.font22,
-                    fontWeight: FontWeight.w500,
-                  ),
+                  style: TextStyle(fontSize: Dimensions.font22, fontWeight: FontWeight.w500),
                 ),
                 Text(
                   'Save Notable Locations in our database',
-                  style: TextStyle(
-                    fontSize: Dimensions.font15,
-                    fontWeight: FontWeight.w400,
-                  ),
+                  style: TextStyle(fontSize: Dimensions.font15, fontWeight: FontWeight.w400),
                 ),
                 SizedBox(height: Dimensions.height20),
-                Text(
-                  'Saved Locations',
-                  style: TextStyle(
-                    fontSize: Dimensions.font16,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
+
+                // --- Saved Locations List ---
+                Text('Saved Locations', style: TextStyle(fontSize: Dimensions.font16, fontWeight: FontWeight.w500)),
                 SizedBox(height: Dimensions.height20),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.start,
@@ -251,24 +223,18 @@ class _LocationScreenState extends State<LocationScreen> {
                               color: AppColors.white,
                               shape: BoxShape.circle,
                               boxShadow: [
-                                BoxShadow(
-                                  color: Colors.grey.withOpacity(0.1),
-                                  blurRadius: 5,
-                                  offset: Offset(0, 2),
-                                ),
+                                BoxShadow(color: Colors.grey.withOpacity(0.1), blurRadius: 5, offset: const Offset(0, 2)),
                               ],
                             ),
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.spaceAround,
                               children: [
                                 SizedBox(height: Dimensions.height5),
-
                                 Icon(
                                   _getLocationIcon(location.label ?? ""),
                                   color: AppColors.primaryColor,
                                   size: Dimensions.iconSize24,
                                 ),
-
                                 Text(
                                   location.label ?? 'Loc',
                                   style: TextStyle(
@@ -286,51 +252,61 @@ class _LocationScreenState extends State<LocationScreen> {
                       }).toList(),
                   ],
                 ),
+
                 SizedBox(height: Dimensions.height20),
+                Text('New Locations', style: TextStyle(fontSize: Dimensions.font16, fontWeight: FontWeight.w500)),
                 Text(
-                  'New Locations',
-                  style: TextStyle(
-                    fontSize: Dimensions.font16,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                Text(
-                  'You have to currently be in the location to save it ',
-                  style: TextStyle(
-                    fontSize: Dimensions.font15,
-                    fontWeight: FontWeight.w300,
-                    color: AppColors.grey5,
-                  ),
+                  'You have to currently be in the location to save it',
+                  style: TextStyle(fontSize: Dimensions.font15, fontWeight: FontWeight.w300, color: AppColors.grey5),
                 ),
                 SizedBox(height: Dimensions.height10),
+
+                // --- FLUTTER MAP (LEAFLET) ---
                 Container(
-                  height: 200, // Fixed height for map area
+                  height: 200,
                   width: double.infinity,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(Dimensions.radius10),
                     border: Border.all(color: AppColors.grey4),
                   ),
                   child: ClipRRect(
-                    // Clips the map corners to match container
                     borderRadius: BorderRadius.circular(Dimensions.radius10),
-                    child: GoogleMap(
-                      initialCameraPosition: CameraPosition(
-                        target: initialPosition,
-                        zoom: 14,
+                    child: FlutterMap(
+                      mapController: _mapController,
+                      options: MapOptions(
+                        initialCenter: _initialPosition,
+                        initialZoom: 14.0,
+                        // Prevent user from panning too far away if you want strictly "current location"
+                        // interactionOptions: InteractionOptions(flags: InteractiveFlag.pinchZoom),
                       ),
-                      myLocationEnabled: true,
-                      myLocationButtonEnabled: false,
-                      zoomControlsEnabled: false,
-                      markers: markers,
-                      onMapCreated: (GoogleMapController controller) {
-                        mapController = controller;
-                        getCurrentLocation();
-                      },
+                      children: [
+                        TileLayer(
+                          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                          userAgentPackageName: 'com.otonav.app',
+                        ),
+                        if (_currentPosition != null)
+                          MarkerLayer(
+                            markers: [
+                              Marker(
+                                point: _currentPosition!,
+                                width: 40,
+                                height: 40,
+                                child: const Icon(
+                                    Icons.location_on,
+                                    color: Colors.red,
+                                    size: 40
+                                ),
+                              ),
+                            ],
+                          ),
+                      ],
                     ),
                   ),
                 ),
+
                 SizedBox(height: Dimensions.height20),
 
+                // --- Location Label Picker ---
                 InkWell(
                   onTap: showLocationNameModal,
                   child: Container(
@@ -349,9 +325,7 @@ class _LocationScreenState extends State<LocationScreen> {
                           selectedName ?? 'What will this place be called?',
                           style: TextStyle(
                             fontSize: Dimensions.font15,
-                            color: selectedName == null
-                                ? AppColors.grey5
-                                : Colors.black,
+                            color: selectedName == null ? AppColors.grey5 : Colors.black,
                           ),
                         ),
                         Icon(Icons.arrow_drop_down, color: AppColors.grey5),
@@ -360,34 +334,37 @@ class _LocationScreenState extends State<LocationScreen> {
                   ),
                 ),
                 SizedBox(height: Dimensions.height20),
+
+                // --- Location Address Input (Read Only / Generated) ---
                 GestureDetector(
                   onTap: getCurrentLocation,
                   child: AbsorbPointer(
                     child: CustomTextField(
-                      controller: locationController, // Bind controller
-                      labelText: isLoadingLocation
-                          ? 'Fetching location...'
-                          : 'Generate Location',
+                      controller: locationController,
+                      labelText: isLoadingLocation ? 'Fetching location...' : 'Generate Location',
                       suffixIcon: isLoadingLocation
                           ? Container(
-                              padding: EdgeInsets.all(10),
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : Icon(Icons.location_searching),
+                        padding: const EdgeInsets.all(10),
+                        height: 20, width: 20,
+                        child: const CircularProgressIndicator(strokeWidth: 2),
+                      )
+                          : const Icon(Icons.location_searching),
                     ),
                   ),
                 ),
                 SizedBox(height: Dimensions.height20),
+
+                // --- Save Button ---
                 CustomButton(
                   text: 'Save new Location',
                   onPressed: () {
                     String address = locationController.text.trim();
                     if (selectedName == null) {
-                      CustomSnackBar.failure(
-                        message: "Please choose a label (e.g., Home, Office)",
-                      );
+                      CustomSnackBar.failure(message: "Please choose a label (e.g., Home, Office)");
+                      return;
+                    }
+                    if (address.isEmpty) {
+                      CustomSnackBar.failure(message: "Please generate a location first");
                       return;
                     }
                     authController.addNewLocation(selectedName!, address);

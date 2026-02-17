@@ -1,21 +1,21 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:get/get.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:iconsax/iconsax.dart';
+import 'package:latlong2/latlong.dart';
 import '../../../controllers/order_controller.dart';
 import '../../../helpers/route_helper.dart';
 import '../../../model/order_model.dart';
 import '../../../utils/app_constants.dart';
 import '../../../utils/colors.dart';
 import 'dart:async';
-import 'package:dio/dio.dart';
-import 'package:flutter_polyline_points/flutter_polyline_points.dart';
+
 
 class CustomerTrackingPage extends StatefulWidget {
   final String orderId;
-
   const CustomerTrackingPage({super.key, required this.orderId});
 
   @override
@@ -23,336 +23,334 @@ class CustomerTrackingPage extends StatefulWidget {
 }
 
 class _CustomerTrackingPageState extends State<CustomerTrackingPage> {
-  GoogleMapController? _mapController;
-
-  final Set<Marker> _markers = {};
-  Set<Polyline> _polylines = {};
+  final MapController _mapController = MapController();
+  final OSMHelper _osmHelper = OSMHelper();
 
   LatLng? _destinationLatLng;
-  BitmapDescriptor? _riderIcon;
-  BitmapDescriptor? _destIcon;
-
+  List<LatLng> _routePoints = [];
   String _distance = '';
   String _duration = '';
-  bool _assetsLoaded = false;
-
-  final RouteHelper _routeHelper = RouteHelper(
-    googleApiKey: "AIzaSyBHCvfuITDTbiNlpKh6mN75mt2o_eqTYow",
-  );
+  bool _isDestLoaded = false;
+  bool _isMapReady = false;
 
   late Worker _posWorker;
   late Worker _orderWorker;
+  DateTime? _lastRouteFetch;
 
   @override
   void initState() {
     super.initState();
-
     final controller = Get.find<OrderController>();
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await controller.startCustomerTracking(widget.orderId);
     });
 
+    // Load destination once order details arrive
     _orderWorker = ever<OrderModel?>(controller.trackingOrder, (order) {
-      if (order == null) return;
-      _loadAssetsAndDestination(order);
+      if (order != null && !_isDestLoaded) {
+        _loadDestination(order);
+      }
     });
 
+    // Pan camera to rider on every position update
     _posWorker = ever<LatLng?>(controller.currentRiderLatLng, (pos) {
-      if (pos == null) return;
-
-      _riderIcon ??= BitmapDescriptor.defaultMarkerWithHue(
-        BitmapDescriptor.hueAzure,
-      );
-
-      _updateRiderMarker(pos);
-
-      if (_destinationLatLng != null) {
-        _fetchRoute(pos);
-      }
+      if (pos != null) _updateCamera(pos);
     });
   }
 
   @override
   void dispose() {
-    _routeHelper.dispose();
     _posWorker.dispose();
     _orderWorker.dispose();
     super.dispose();
   }
 
-  Future<LatLng?> geocodeWithGoogle(String address, String apiKey) async {
-    try {
-      final url =
-          "https://maps.googleapis.com/maps/api/geocode/json?address=${Uri.encodeComponent(address)}&key=$apiKey";
-
-      final res = await Dio().get(url);
-      final status = res.data['status'];
-
-      if (status != "OK") {
-        print("❌ Geocode failed: $status");
-        return null;
-      }
-
-      final loc = res.data['results'][0]['geometry']['location'];
-      return LatLng(loc['lat'], loc['lng']);
-    } catch (e) {
-      print("❌ Geocode exception: $e");
-      return null;
-    }
-  }
-
-  Future<void> _loadAssetsAndDestination(OrderModel order) async {
-    if (_assetsLoaded) return;
-
-    _riderIcon = await BitmapDescriptor.asset(
-      const ImageConfiguration(size: Size(48, 48)),
-      AppConstants.getPngAsset('delivery-bike-2'),
-    );
-    _destIcon = await BitmapDescriptor.asset(
-      const ImageConfiguration(size: Size(48, 48)),
-      AppConstants.getPngAsset('masculine-user'),
-    );
-
+  Future<void> _loadDestination(OrderModel order) async {
     final address = order.customerLocationPrecise ?? "";
-    if (address.isEmpty) {
-      setState(() => _assetsLoaded = true);
-      return;
-    }
+    if (address.isEmpty) return;
 
-    try {
-      final dest = await geocodeWithGoogle(address, _routeHelper.googleApiKey);
-      if (dest == null) {
-        print("❌ Failed to geocode destination");
-        setState(() => _assetsLoaded = true);
-        return;
-      }
-
-      if (!mounted) return;
-
-      setState(() {
-        _destinationLatLng = dest;
-        _markers.add(
-          Marker(
-            markerId: const MarkerId('destination'),
-            position: dest,
-            icon: _destIcon!,
-            infoWindow: const InfoWindow(title: "Your Delivery Location"),
-          ),
-        );
-        _assetsLoaded = true;
-      });
-
-      // Move camera to show both markers
-      _fitMapToBounds();
-
-      // Fetch initial route if rider position already exists
-      final riderPos = Get.find<OrderController>().currentRiderLatLng.value;
-      if (riderPos != null) {
-        _fetchRoute(riderPos);
-      }
-    } catch (e) {
-      print("❌ Geocode error: $e");
-      setState(() => _assetsLoaded = true);
-    }
-  }
-
-  double _calculateBearing(LatLng start, LatLng end) {
-    final lat1 = start.latitude * pi / 180;
-    final lat2 = end.latitude * pi / 180;
-    final dLon = (end.longitude - start.longitude) * pi / 180;
-
-    final y = sin(dLon) * cos(lat2);
-    final x = cos(lat1) * sin(lat2) - sin(lat1) * cos(lat2) * cos(dLon);
-
-    return (atan2(y, x) * 180 / pi + 360) % 360;
-  }
-
-  void _updateRiderMarker(LatLng pos) {
-    if (!mounted) return;
+    final dest = await _osmHelper.getCoordinatesFromAddress(address);
+    if (!mounted || dest == null) return;
 
     setState(() {
-      _markers.removeWhere((m) => m.markerId.value == 'rider');
-      _markers.add(
-        Marker(
-          markerId: const MarkerId('rider'),
-          position: pos,
-          icon: _riderIcon!,
-          infoWindow: const InfoWindow(title: "Rider"),
-        ),
-      );
+      _destinationLatLng = dest;
+      _isDestLoaded = true;
     });
 
-    // Only auto-follow rider if destination is not visible
-    if (_destinationLatLng != null) {
-      _fitMapToBounds();
-    } else {
-      _mapController?.animateCamera(CameraUpdate.newLatLng(pos));
+    final riderPos = Get.find<OrderController>().currentRiderLatLng.value;
+    if (riderPos != null) {
+      _fetchRoute(riderPos, dest);
+      if (_isMapReady) {
+        Future.delayed(const Duration(milliseconds: 100), () {
+          if (mounted) _fitBounds(riderPos, dest);
+        });
+      }
     }
   }
 
-  void _fetchRoute(LatLng origin) {
-    if (_destinationLatLng == null) return;
+  // Only moves the camera — marker position is driven by Obx reactively
+  void _updateCamera(LatLng riderPos) {
+    if (!mounted || !_isMapReady) return;
+    _mapController.move(riderPos, _mapController.camera.zoom);
 
-    _routeHelper.debounceRoute(
-      origin: origin,
-      destination: _destinationLatLng!,
-      onResult: (distance, duration, points) {
-        if (!mounted) return;
-        setState(() {
-          _distance = distance;
-          _duration = duration;
-          _polylines = {
-            Polyline(
-              polylineId: const PolylineId("route"),
-              points: points,
-              width: 5,
-              color: AppColors.success,
-            ),
-          };
-        });
-      },
-    );
+    if (_destinationLatLng != null) {
+      final now = DateTime.now();
+      if (_lastRouteFetch == null ||
+          now.difference(_lastRouteFetch!).inSeconds > 10) {
+        _fetchRoute(riderPos, _destinationLatLng!);
+        _lastRouteFetch = now;
+      }
+    }
   }
 
-  void _fitMapToBounds() {
-    if (_mapController == null) return;
+  Future<void> _fetchRoute(LatLng start, LatLng end) async {
+    final result = await _osmHelper.getRoute(start, end);
+    if (!mounted || result == null) return;
+    setState(() {
+      _routePoints = result['points'];
+      _distance = result['distance'];
+      _duration = result['duration'];
+    });
+  }
 
-    final riderPos = Get.find<OrderController>().currentRiderLatLng.value;
-    if (riderPos == null || _destinationLatLng == null) return;
-
-    final bounds = LatLngBounds(
-      southwest: LatLng(
-        min(riderPos.latitude, _destinationLatLng!.latitude),
-        min(riderPos.longitude, _destinationLatLng!.longitude),
+  void _fitBounds(LatLng p1, LatLng p2) {
+    if (!mounted || !_isMapReady) return;
+    _mapController.fitCamera(
+      CameraFit.bounds(
+        bounds: LatLngBounds(p1, p2),
+        padding: const EdgeInsets.all(80),
       ),
-      northeast: LatLng(
-        max(riderPos.latitude, _destinationLatLng!.latitude),
-        max(riderPos.longitude, _destinationLatLng!.longitude),
-      ),
-    );
-
-    _mapController?.animateCamera(
-      CameraUpdate.newLatLngBounds(bounds, 100),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final controller = Get.find<OrderController>();
+
     return Scaffold(
       body: GetBuilder<OrderController>(
-        builder: (controller) {
-          final order = controller.trackingOrder.value;
+        builder: (ctrl) {
+          final order = ctrl.trackingOrder.value;
           if (order == null) {
             return const Center(child: CircularProgressIndicator());
           }
 
-          final riderPos = controller.currentRiderLatLng.value;
+          final initialCenter =
+              ctrl.currentRiderLatLng.value ?? const LatLng(6.5244, 3.3792);
 
-          return SafeArea(
-            child: Stack(
-              children: [
-                Positioned.fill(
-                  child: GoogleMap(
-                    initialCameraPosition: CameraPosition(
-                      target: riderPos ??
-                          _destinationLatLng ??
-                          const LatLng(6.5244, 3.3792),
-                      zoom: 14,
-                    ),
-                    markers: _markers,
-                    polylines: _polylines,
-                    zoomControlsEnabled: false,
-                    myLocationEnabled: true,
-                    myLocationButtonEnabled: true,
-                    onMapCreated: (c) {
-                      _mapController = c;
-                      // Fit bounds once map is created if we have both positions
-                      if (riderPos != null && _destinationLatLng != null) {
-                        Future.delayed(const Duration(milliseconds: 500), () {
-                          _fitMapToBounds();
-                        });
-                      }
-                    },
-                  ),
+          return Stack(
+            children: [
+              // ── MAP ────────────────────────────────────────────────────
+              FlutterMap(
+                mapController: _mapController,
+                options: MapOptions(
+                  initialCenter: initialCenter,
+                  initialZoom: 14.0,
+                  minZoom: 5.0,
+                  maxZoom: 18.0,
+                  onMapReady: () {
+                    _isMapReady = true;
+                    final pos = controller.currentRiderLatLng.value;
+                    if (pos != null) _updateCamera(pos);
+                    if (pos != null && _destinationLatLng != null) {
+                      _fitBounds(pos, _destinationLatLng!);
+                    }
+                  },
                 ),
+                children: [
+                  TileLayer(
+                    urlTemplate:
+                    'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    userAgentPackageName: 'com.otonav.app',
+                  ),
 
-                Positioned(
-                  bottom: 30,
-                  left: 20,
-                  right: 20,
-                  child: Container(
-                    padding: const EdgeInsets.all(18),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Colors.black12,
-                          blurRadius: 10,
-                          offset: Offset(0, 5),
+                  // Route polyline
+                  if (_routePoints.isNotEmpty)
+                    PolylineLayer(
+                      polylines: [
+                        Polyline(
+                          points: _routePoints,
+                          color: AppColors.primaryColor,
+                          strokeWidth: 5.0,
                         ),
                       ],
                     ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(
-                          child: Column(
+
+                  // ✅ Obx wraps MarkerLayer so it rebuilds on EVERY
+                  // currentRiderLatLng change without needing update()
+                  Obx(() {
+                    final riderPos = controller.currentRiderLatLng.value;
+                    return MarkerLayer(
+                      markers: [
+                        if (_destinationLatLng != null)
+                          Marker(
+                            point: _destinationLatLng!,
+                            width: 40,
+                            height: 40,
+                            child: Image.asset(
+                                AppConstants.getPngAsset('masculine-user')),
+                          ),
+                        if (riderPos != null)
+                          Marker(
+                            point: riderPos,
+                            width: 40,
+                            height: 40,
+                            child: Image.asset(
+                                AppConstants.getPngAsset('delivery-bike-2')),
+                          ),
+                      ],
+                    );
+                  }),
+
+                  RichAttributionWidget(
+                    attributions: [
+                      TextSourceAttribution('OpenStreetMap contributors',
+                          onTap: () {}),
+                    ],
+                  ),
+                ],
+              ),
+
+              // ── BACK BUTTON ─────────────────────────────────────────────
+              Positioned(
+                top: 50,
+                left: 20,
+                child: InkWell(
+                  onTap: () => Get.back(),
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(color: Colors.black12, blurRadius: 5)
+                      ],
+                    ),
+                    child: const Icon(Icons.arrow_back, color: Colors.black),
+                  ),
+                ),
+              ),
+
+              // ── RIDER DETAILS CARD ───────────────────────────────────────
+              Positioned(
+                bottom: 30,
+                left: 20,
+                right: 20,
+                child: Container(
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: const [
+                      BoxShadow(
+                          color: Colors.black12,
+                          blurRadius: 10,
+                          offset: Offset(0, 5)),
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               const Text(
-                                "Tracking Rider",
+                                "On the way",
                                 style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,
+                                  color: AppColors.success,
                                 ),
                               ),
-                              const SizedBox(height: 4),
                               if (_duration.isNotEmpty)
                                 Text(
                                   "Arriving in $_duration",
                                   style: const TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.grey,
-                                  ),
+                                      fontSize: 12, color: Colors.grey),
                                 )
                               else
                                 const Text(
-                                  "Calculating route...",
+                                  "Tracking shipment...",
                                   style: TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.grey,
-                                  ),
+                                      fontSize: 12, color: Colors.grey),
                                 ),
                             ],
                           ),
-                        ),
-                        if (_distance.isNotEmpty)
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 6,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.black,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Text(
-                              _distance,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
+                          if (_distance.isNotEmpty)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: Colors.black,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                _distance,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ),
+                        ],
+                      ),
+                      const SizedBox(height: 15),
+                      const Divider(),
+                      const SizedBox(height: 15),
+                      Row(
+                        children: [
+                          CircleAvatar(
+                            radius: 25,
+                            backgroundColor: Colors.grey[200],
+                            child: const Icon(Icons.person, color: Colors.grey),
                           ),
-                      ],
-                    ),
+                          const SizedBox(width: 15),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  order.rider?.name ?? "Assigned Rider",
+                                  style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600),
+                                ),
+                                const Text(
+                                  "Verified Rider",
+                                  style: TextStyle(
+                                      fontSize: 12, color: Colors.grey),
+                                ),
+                              ],
+                            ),
+                          ),
+                          InkWell(
+                            onTap: () {
+                              if (order.rider?.phoneNumber != null) {
+                                // launchUrl logic here
+                              }
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: AppColors.success.withOpacity(0.1),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Iconsax.call,
+                                  color: AppColors.success),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           );
         },
       ),

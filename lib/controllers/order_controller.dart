@@ -1,8 +1,7 @@
 import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:otonav/controllers/app_controller.dart';
 import 'package:otonav/controllers/user_controller.dart';
 import 'package:otonav/helpers/global_loader_controller.dart';
@@ -47,17 +46,10 @@ class OrderController extends GetxController {
     if (s == null || !s.contains(',')) return null;
     final parts = s.split(',');
     if (parts.length < 2) return null;
-
     double? a = double.tryParse(parts[0].trim());
     double? b = double.tryParse(parts[1].trim());
     if (a == null || b == null) return null;
-
-    double lat = a, lng = b;
-    if (lat.abs() > 90 || lng.abs() > 180) {
-      lat = b;
-      lng = a;
-    }
-    return LatLng(lat, lng);
+    return LatLng(a, b);
   }
 
   Uri _wsUrl({
@@ -67,7 +59,7 @@ class OrderController extends GetxController {
   }) {
     return Uri.parse(
       'wss://otonav-backend-production.up.railway.app/ws'
-      '?orderId=$orderId&userId=$userId&role=$role',
+          '?orderId=$orderId&userId=$userId&role=$role',
     );
   }
 
@@ -80,10 +72,10 @@ class OrderController extends GetxController {
 
       final rider = parseLatLng(order.riderCurrentLocation);
       if (rider != null) {
-        currentRiderLatLng.value = rider; // 👈 seed initial marker
+        currentRiderLatLng.value = rider;
       }
 
-      update();
+      update(); // ✅ Notify GetBuilder
     } else {
       CustomSnackBar.failure(
         message: res.body['message'] ?? "Failed to load order",
@@ -104,7 +96,7 @@ class OrderController extends GetxController {
     _channel = IOWebSocketChannel.connect(url);
 
     _wsSub = _channel!.stream.listen(
-      (message) {
+          (message) {
         print("📩 WS: $message");
         _handleWsMessage(orderId, message);
       },
@@ -117,13 +109,13 @@ class OrderController extends GetxController {
   void _handleWsMessage(String orderId, dynamic message) {
     try {
       final data = jsonDecode(message);
-
       if (data is! Map) return;
 
       if (data['type'] == 'location_update') {
         final rider = parseLatLng(data['location']);
         if (rider != null) {
           currentRiderLatLng.value = rider;
+          update(); // ✅ CRITICAL FIX: tell GetBuilder to rebuild the marker
         }
         return;
       }
@@ -139,11 +131,8 @@ class OrderController extends GetxController {
 
   void _sendCoords(LatLng pos) {
     if (_channel == null) return;
-    _channel!.sink.add(
-      jsonEncode({"coords": "${pos.latitude},${pos.longitude}"}),
-    );
-    print("📤 WS SEND coords: ${pos.latitude},${pos.longitude}");
     final payload = jsonEncode({"coords": "${pos.latitude},${pos.longitude}"});
+    _channel!.sink.add(payload);
     print("📤 WS SEND -> $payload");
   }
 
@@ -165,26 +154,20 @@ class OrderController extends GetxController {
   void _startRiderStream() {
     const settings = LocationSettings(
       accuracy: LocationAccuracy.high,
-      distanceFilter: 10,
+      distanceFilter: 5, // ✅ reduced from 10 → 5m for more frequent updates
     );
 
     _posSub?.cancel();
-    _posSub = Geolocator.getPositionStream(locationSettings: settings).listen((
-      p,
-    ) {
+    _posSub = Geolocator.getPositionStream(locationSettings: settings).listen((p) {
       final pos = LatLng(p.latitude, p.longitude);
-
-      // update UI
       currentRiderLatLng.value = pos;
-
-      // send to backend
+      update(); // ✅ CRITICAL FIX: rebuild marker on own GPS update too
       _sendCoords(pos);
     });
   }
 
   Future<void> startCustomerTracking(String orderId) async {
     await getOrderDetails(orderId);
-
     final userId = Get.find<UserController>().userModel.value!.id!;
     _connectWs(orderId: orderId, userId: userId, role: 'customer');
   }
@@ -194,7 +177,6 @@ class OrderController extends GetxController {
     if (!ok) return;
 
     await getOrderDetails(orderId);
-
     final userId = Get.find<UserController>().userModel.value!.id!;
     _connectWs(orderId: orderId, userId: userId, role: 'rider');
     _startRiderStream();
@@ -269,7 +251,6 @@ class OrderController extends GetxController {
 
   Future<void> startOwnerTracking(String orderId) async {
     await getOrderDetails(orderId);
-
     final userId = Get.find<UserController>().userModel.value!.id!;
     _connectWs(orderId: orderId, userId: userId, role: "owner");
   }
@@ -279,7 +260,6 @@ class OrderController extends GetxController {
     update();
 
     try {
-      // 1. Get Current Location
       LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
@@ -298,7 +278,6 @@ class OrderController extends GetxController {
       );
       String locationString = "${position.latitude},${position.longitude}";
 
-      // 2. Call API
       Response response = await orderRepo.acceptOrder(orderId, locationString);
 
       if (response.statusCode == 200 && response.body['success'] == true) {
@@ -330,7 +309,7 @@ class OrderController extends GetxController {
 
     if (response.statusCode == 200 && response.body['success'] == true) {
       CustomSnackBar.success(message: "Order cancelled successfully.");
-      await getOrders(); // Refresh list
+      await getOrders();
     } else {
       CustomSnackBar.failure(
         message: response.body['message'] ?? "Failed to cancel order",
@@ -342,10 +321,10 @@ class OrderController extends GetxController {
   }
 
   Future<void> setOrderLocation(
-    String orderId,
-    String label,
-    String preciseLocation,
-  ) async {
+      String orderId,
+      String label,
+      String preciseLocation,
+      ) async {
     Map<String, dynamic> body = {
       "locationLabel": label,
       "locationPrecise": preciseLocation,
@@ -376,7 +355,6 @@ class OrderController extends GetxController {
     Response response = await orderRepo.getOrders();
 
     if (response.statusCode == 200 && response.body['success'] == true) {
-      // Clear and update RxList - this triggers Obx to rebuild
       _allOrders.clear();
       List<dynamic> data = response.body['data'];
       data.forEach((element) {

@@ -9,6 +9,8 @@ class AuthRepo extends GetConnect {
 
   AuthRepo({required this.apiClient});
 
+  await apiClient.postData('/users/fcm-token', body)
+
 
   Future<Response> updateProfile(Map<String, dynamic> body) async {
     return await apiClient.putData(AppConstants.GET_PROFILE, body);

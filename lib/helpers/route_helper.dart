@@ -1,76 +1,122 @@
-import 'dart:async';
 import 'package:dio/dio.dart';
-import 'package:flutter_polyline_points/flutter_polyline_points.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:latlong2/latlong.dart';
 
-class RouteHelper {
-  RouteHelper({required this.googleApiKey});
+class OSMHelper {
+  final Dio _dio = Dio();
 
-  final String googleApiKey;
-
-  Timer? _debounce;
-
-  void dispose() {
-    _debounce?.cancel();
-  }
-
-  void debounceRoute({
-    required LatLng origin,
-    required LatLng destination,
-    required void Function(String distance, String duration, List<LatLng> points) onResult,
-  }) {
-    _debounce?.cancel();
-    _debounce = Timer(const Duration(seconds: 6), () async {
-      final result = await getRoute(origin: origin, destination: destination);
-      if (result == null) return;
-      onResult(result.distance, result.duration, result.points);
-    });
-  }
-
-  Future<_RouteResult?> getRoute({
-    required LatLng origin,
-    required LatLng destination,
-  }) async {
+  // 1. FREE ROUTING (OSRM)
+  Future<Map<String, dynamic>?> getRoute(LatLng start, LatLng end) async {
     try {
+      // OSRM Public Server (Demo)
+      // Note: For heavy commercial use, you should eventually host your own OSRM instance (free software)
       final url =
-          "https://maps.googleapis.com/maps/api/directions/json"
-          "?origin=${origin.latitude},${origin.longitude}"
-          "&destination=${destination.latitude},${destination.longitude}"
-          "&mode=driving"
-          "&key=$googleApiKey";
+          'http://router.project-osrm.org/route/v1/driving/${start.longitude},${start.latitude};${end.longitude},${end.latitude}?overview=full&geometries=geojson';
 
-      final res = await Dio().get(url);
+      final response = await _dio.get(url);
 
-      if (res.data['status'] != 'OK') return null;
+      if (response.statusCode == 200 && response.data['routes'].isNotEmpty) {
+        final route = response.data['routes'][0];
+        final geometry = route['geometry'];
+        final coordinates = geometry['coordinates'] as List;
 
-      final route = res.data['routes'][0];
-      final leg = route['legs'][0];
+        // Convert raw coords to LatLng list
+        List<LatLng> points = coordinates
+            .map((e) => LatLng(e[1].toDouble(), e[0].toDouble()))
+            .toList();
 
-      final distance = leg['distance']['text'];
-      final duration = leg['duration']['text'];
+        // Format Duration & Distance
+        final durationSeconds = route['duration'];
+        final distanceMeters = route['distance'];
 
-      final encoded = route['overview_polyline']['points'];
-      final decoded = PolylinePoints.decodePolyline(encoded);
-
-      final points = decoded
-          .map((p) => LatLng(p.latitude, p.longitude))
-          .toList();
-
-      return _RouteResult(distance: distance, duration: duration, points: points);
-    } catch (_) {
-      return null;
+        return {
+          'points': points,
+          'distance': _formatDistance(distanceMeters),
+          'duration': _formatDuration(durationSeconds),
+        };
+      }
+    } on DioException catch (e){
+      if (e.response?.statusCode == 400) {
+        print("OSRM Error: ${e.response?.data}");
+        print("⚠️ Route Error: Cannot calculate route (e.g. across ocean).");
+        return null;
+      }
+    }catch (e) {
+      print("OSRM Error: $e");
     }
+    return null;
   }
-}
 
-class _RouteResult {
-  final String distance;
-  final String duration;
-  final List<LatLng> points;
+  // 2. FREE GEOCODING (Nominatim)
+  Future<LatLng?> getCoordinatesFromAddress(String address) async {
+    try {
+      final url = 'https://nominatim.openstreetmap.org/search';
 
-  _RouteResult({
-    required this.distance,
-    required this.duration,
-    required this.points,
-  });
+      final response = await _dio.get(
+        url,
+        queryParameters: {
+          'q': address,
+          'format': 'json',
+          'limit': 1,
+        },
+        options: Options(
+          headers: {
+            // REQUIRED: Nominatim requires a User-Agent identifying your app
+            'User-Agent': 'OtoNav_App_1.0',
+          },
+        ),
+      );
+
+      if (response.statusCode == 200 && (response.data as List).isNotEmpty) {
+        final data = response.data[0];
+        return LatLng(
+          double.parse(data['lat']),
+          double.parse(data['lon']),
+        );
+      }
+    } catch (e) {
+      print("Nominatim Error: $e");
+    }
+    return null;
+  }
+
+  Future<String?> getAddressFromCoordinates(double lat, double lng) async {
+    try {
+      final url = 'https://nominatim.openstreetmap.org/reverse';
+
+      final response = await _dio.get(
+        url,
+        queryParameters: {
+          'lat': lat,
+          'lon': lng,
+          'format': 'json',
+        },
+        options: Options(
+          headers: {
+            'User-Agent': 'OtoNav_App_1.0',
+          },
+        ),
+      );
+
+      if (response.statusCode == 200 && response.data != null) {
+        // 'display_name' gives the full address string
+        return response.data['display_name'];
+      }
+    } catch (e) {
+      print("Nominatim Reverse Geo Error: $e");
+    }
+    return null;
+  }
+
+  String _formatDistance(num meters) {
+    if (meters < 1000) return '${meters.round()} m';
+    return '${(meters / 1000).toStringAsFixed(1)} km';
+  }
+
+  String _formatDuration(num seconds) {
+    final minutes = (seconds / 60).round();
+    if (minutes < 60) return '$minutes mins';
+    final hours = (minutes / 60).floor();
+    final remMins = minutes % 60;
+    return '${hours}h ${remMins}m';
+  }
 }

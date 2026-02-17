@@ -66,6 +66,22 @@ class UserController extends GetxController {
   }
 
 
+  Future<void> saveDeviceToken(String token) async {
+    final body = {"fcmToken": token};
+
+    final res = await apiClient.postData('/users/fcm-token', body);
+
+    if (res.statusCode == 200) {
+      // success true/ message...
+      return;
+    }
+
+    // handle error
+    throw Exception("Failed to update FCM token: ${res.statusText}");
+  }
+
+
+
   Future<void> getUserProfile() async {
     await Future.delayed(Duration.zero);
     loader.hideLoader();

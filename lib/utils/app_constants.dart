@@ -2,7 +2,7 @@ class AppConstants {
   static const String APP_NAME = "OtoNav";
   static const String VERSION = "1.0.0";
   
-  static const String BASE_URL = 'https://otonav-backend-production.up.railway.app';
+  static const String BASE_URL = 'https://otonav-backend.onrender.com';
 
   //TOKEN
   static const authToken = 'authToken';
