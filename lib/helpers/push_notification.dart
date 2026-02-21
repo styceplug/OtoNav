@@ -22,7 +22,7 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   print("🌙 Background Message: ${message.messageId} | data: ${message.data}");
 }
 
-class NotificationService {
+/*class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
   factory NotificationService() => _instance;
   NotificationService._internal();
@@ -168,7 +168,7 @@ class NotificationService {
       // ignore
     }
   }
-/*
+*//*
   void _handleNavigation(Map<String, dynamic> data) {
     // You decide your payload contract from backend.
     // Example:
@@ -185,6 +185,6 @@ class NotificationService {
 
     // fallback
     Get.offAllNamed(AppRoutes.homeScreen);
-  }*/
-}
+  }*//*
+}*/
 

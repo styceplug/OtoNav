@@ -6,9 +6,7 @@ import '../utils/colors.dart';
 import '../utils/dimensions.dart';
 import 'custom_button.dart';
 
-import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart';
-import 'package:iconsax/iconsax.dart';
+
 
 class OrderCard extends StatefulWidget {
   final String orderId;

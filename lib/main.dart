@@ -30,7 +30,7 @@ Future<void> main() async {
   );
 
   FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
-  await NotificationService().initialize();
+  // await NotificationService().initialize();
 
   runApp(const MyApp());
 }

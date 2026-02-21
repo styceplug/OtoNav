@@ -72,7 +72,7 @@ class CustomButton extends StatelessWidget {
             ],
             Flexible(
               child: Text(
-                text ?? '',
+                text,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,
