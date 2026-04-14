@@ -18,10 +18,12 @@ import 'package:otonav/screens/splash/onboarding_screen.dart';
 import 'package:otonav/screens/splash/update_app_screen.dart';
 import 'package:otonav/screens/pages/user_pages/screens/orders.dart';
 import 'package:otonav/screens/pages/user_pages/screens/profile.dart';
+import 'package:otonav/web_pages/privacy_policy.dart';
 
 import '../model/order_model.dart';
 import '../screens/pages/user_pages/user_home_screen.dart';
 import '../screens/splash/splash_screen.dart';
+import '../web_pages/account_deletion.dart';
 import '../widgets/snackbars.dart';
 
 class AppRoutes {
@@ -32,6 +34,8 @@ class AppRoutes {
   static const String noInternetScreen = '/no-internet-screen';
   static const String getStartedScreen = '/get-started-screen';
   static const String notificationScreen = '/notification-screen';
+  static const String privacyPolicy = '/privacy-policy';
+  static const String accountDeletion = '/account-deletion';
 
   //auth
   static const String riderLoginScreen = '/rider-login-screen';
@@ -60,6 +64,19 @@ class AppRoutes {
 
 
   static final routes = [
+
+
+    GetPage(
+      name: privacyPolicy,
+      page: () {
+        return const PrivacyPolicyPage();
+      },),
+    GetPage(
+      name: accountDeletion,
+      page: () {
+        return const AccountDeletionRequestPage();
+      },),
+
 
     //customer
     GetPage(
