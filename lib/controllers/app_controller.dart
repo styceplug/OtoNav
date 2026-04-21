@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 
 import 'package:get/get.dart';
@@ -9,6 +11,7 @@ import 'package:otonav/data/repo/auth_repo.dart';
 import 'package:otonav/screens/pages/rider_pages/screens/rider_home_page.dart';
 import 'package:otonav/screens/pages/user_pages/screens/orders.dart';
 import 'package:otonav/screens/pages/user_pages/screens/profile.dart';
+import 'package:otonav/widgets/snackbars.dart';
 
 import '../data/repo/app_repo.dart';
 import '../routes/routes.dart';
@@ -37,7 +40,6 @@ class AppController extends GetxController {
   var isFirstTime = false.obs;
   PageController pageController = PageController();
 
-
   final List<Widget> customerPages = [
     CustomerHomePage(),
     CustomerOrdersPage(),
@@ -55,8 +57,6 @@ class AppController extends GetxController {
     // initializeApp();
     super.onInit();
   }
-
-
 
   Future<void> initializeApp() async {
     print('Initializing App...');
@@ -120,12 +120,19 @@ class AppController extends GetxController {
     }
   }
 
-  void _navigateHome(String? role) {
+  Future<void> _navigateHome(String? role) async {
+
+    saveDeviceToken();
     if (role == 'rider') {
       Get.offAllNamed(AppRoutes.riderHomeScreen);
     } else {
+      if (role == 'customer')
       Get.offAllNamed(AppRoutes.customerHomeScreen);
     }
+    Future.delayed(const Duration(milliseconds: 500), () {
+      CustomSnackBar.showToast(message: 'User does not exist');
+    });
+    return;
   }
 
   void _logout() {
@@ -138,19 +145,55 @@ class AppController extends GetxController {
     Get.offAllNamed(AppRoutes.getStartedScreen);
   }
 
-  /*Future<void> saveDeviceToken(String token) async {
-    String platform = Platform.isAndroid ? 'android' : 'ios';
+  Future<void> saveDeviceToken() async {
+    try {
+      FirebaseMessaging messaging = FirebaseMessaging.instance;
 
-    print("🔔 Updating Device Token: $platform");
+      // 1. Request Permission
+      NotificationSettings settings = await messaging.requestPermission(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
 
-    Response response = await appRepo.updateDeviceToken(token, platform);
+      if (settings.authorizationStatus == AuthorizationStatus.authorized) {
+        if (Platform.isIOS) {
+          String? apnsToken = await messaging.getAPNSToken();
 
-    if (response.statusCode == 200) {
-      print("✅ Device Token Updated Successfully");
-    } else {
-      print("⚠️ Failed to update token: ${response.body}");
+          if (apnsToken == null) {
+            await Future.delayed(const Duration(seconds: 3));
+            apnsToken = await messaging.getAPNSToken();
+          }
+
+          if (apnsToken == null) {
+            print(
+              "❌ APNs Token is null. Are you on a Simulator? Push won't work.",
+            );
+            return; // Stop here to prevent the crash
+          }
+        }
+
+        String? token = await messaging.getToken();
+
+        if (token != null) {
+          String platform = Platform.isAndroid ? 'android' : 'ios';
+          print("📱 Device Token: $token");
+
+          // 3. Send to Backend
+          Response response = await appRepo.updateDeviceToken(token);
+
+          if (response.statusCode == 200) {
+            print("✅ Device Token Synced Successfully");
+          } else {
+            print("⚠️ Failed to sync token: ${response.body}");
+          }
+        }
+      }
+    } catch (e) {
+      print("❌ Error saving device token: $e");
     }
-  }*/
+  }
+
 
   Future<void> checkFirstTimeUse() async {
     final prefs = appRepo.sharedPreferences;

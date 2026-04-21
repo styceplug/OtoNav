@@ -7,40 +7,68 @@ class OSMHelper {
   // 1. FREE ROUTING (OSRM)
   Future<Map<String, dynamic>?> getRoute(LatLng start, LatLng end) async {
     try {
-      // OSRM Public Server (Demo)
-      // Note: For heavy commercial use, you should eventually host your own OSRM instance (free software)
-      final url =
-          'http://router.project-osrm.org/route/v1/driving/${start.longitude},${start.latitude};${end.longitude},${end.latitude}?overview=full&geometries=geojson';
+      // Added &steps=true to the URL
+      final url = 'http://router.project-osrm.org/route/v1/driving/${start.longitude},${start.latitude};${end.longitude},${end.latitude}?overview=full&geometries=geojson&steps=true';
 
       final response = await _dio.get(url);
 
       if (response.statusCode == 200 && response.data['routes'].isNotEmpty) {
         final route = response.data['routes'][0];
-        final geometry = route['geometry'];
-        final coordinates = geometry['coordinates'] as List;
+        final coordinates = route['geometry']['coordinates'] as List;
 
-        // Convert raw coords to LatLng list
         List<LatLng> points = coordinates
             .map((e) => LatLng(e[1].toDouble(), e[0].toDouble()))
             .toList();
 
-        // Format Duration & Distance
-        final durationSeconds = route['duration'];
-        final distanceMeters = route['distance'];
+        // Parse Turn-by-Turn Instructions & Stops Away
+        String instruction = "Head to destination";
+        String stepDistance = "";
+        int stopsAway = 0; // NEW VARIABLE
+
+        if (route['legs'].isNotEmpty && route['legs'][0]['steps'].isNotEmpty) {
+          final steps = route['legs'][0]['steps'] as List;
+
+          // Calculate Stops/Junctions (Total steps minus the final "Arrive" step)
+          stopsAway = steps.length > 1 ? steps.length - 1 : 0;
+
+          if (steps.length > 1) {
+            final nextStep = steps[1];
+            final modifier = nextStep['maneuver']['modifier'] ?? '';
+            final type = nextStep['maneuver']['type'] ?? '';
+
+            String name = nextStep['name'] ?? '';
+            if (name.trim().isEmpty) name = 'the road';
+
+            if (modifier.isNotEmpty) {
+              instruction = "Turn $modifier on $name";
+            } else if (type.isNotEmpty) {
+              instruction = "$type on $name";
+            }
+            stepDistance = _formatDistance(nextStep['distance']);
+          } else if (steps.length == 1) {
+            instruction = "Arrive at destination";
+            stepDistance = _formatDistance(steps[0]['distance']);
+          }
+        }
 
         return {
           'points': points,
-          'distance': _formatDistance(distanceMeters),
-          'duration': _formatDuration(durationSeconds),
+          'distance': _formatDistance(route['distance']),
+          'duration': _formatDuration(route['duration']),
+          'instruction': instruction,
+          'stepDistance': stepDistance,
+          'stops': stopsAway, // RETURN STOPS AWAY
+        };
+
+        return {
+          'points': points,
+          'distance': _formatDistance(route['distance']),
+          'duration': _formatDuration(route['duration']),
+          'instruction': instruction,
+          'stepDistance': stepDistance,
         };
       }
-    } on DioException catch (e){
-      if (e.response?.statusCode == 400) {
-        print("OSRM Error: ${e.response?.data}");
-        print("⚠️ Route Error: Cannot calculate route (e.g. across ocean).");
-        return null;
-      }
-    }catch (e) {
+    } catch (e) {
       print("OSRM Error: $e");
     }
     return null;

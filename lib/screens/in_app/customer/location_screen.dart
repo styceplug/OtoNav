@@ -16,6 +16,7 @@ import '../../../utils/app_constants.dart';
 import '../../../utils/colors.dart';
 import '../../../widgets/snackbars.dart';
 
+
 class LocationScreen extends StatefulWidget {
   const LocationScreen({super.key});
 
@@ -139,9 +140,11 @@ class _LocationScreenState extends State<LocationScreen> {
         }
       }
 
-      // 2. Get Position
+      // 2. Force High Precision GPS Lock
       Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
+        desiredAccuracy: LocationAccuracy.best,
+        forceAndroidLocationManager: true,
+        timeLimit: const Duration(seconds: 10),
       );
 
       LatLng currentLatLng = LatLng(position.latitude, position.longitude);
@@ -150,26 +153,41 @@ class _LocationScreenState extends State<LocationScreen> {
         _currentPosition = currentLatLng;
       });
 
-      // 3. Move Map
-      _mapController.move(currentLatLng, 16.0);
+      // 3. Move Leaflet Map
+      _mapController.move(currentLatLng, 17.0);
 
-      // 4. Reverse Geocode (Get Address Text) via OSMHelper
-      String? address = await _osmHelper.getAddressFromCoordinates(
+      // 4. Reverse Geocode (Get Address Text)
+      try {
+        List<Placemark> placemarks = await placemarkFromCoordinates(
           position.latitude,
-          position.longitude
-      );
+          position.longitude,
+        );
 
-      if (address != null) {
-        locationController.text = address;
-      } else {
+        if (placemarks.isNotEmpty) {
+          Placemark place = placemarks[0];
+
+          List<String> addressParts = [];
+          if (place.street != null && place.street!.isNotEmpty) addressParts.add(place.street!);
+          if (place.subLocality != null && place.subLocality!.isNotEmpty) addressParts.add(place.subLocality!);
+          if (place.locality != null && place.locality!.isNotEmpty) addressParts.add(place.locality!);
+          if (place.administrativeArea != null && place.administrativeArea!.isNotEmpty) addressParts.add(place.administrativeArea!);
+
+          locationController.text = addressParts.join(", ");
+        } else {
+          locationController.text = "${position.latitude}, ${position.longitude}";
+        }
+      } catch (e) {
+        print("Geocoding Error: $e");
         locationController.text = "${position.latitude}, ${position.longitude}";
       }
 
     } catch (e) {
       print("Error getting location: $e");
-      CustomSnackBar.failure(message: "Could not fetch location");
+      CustomSnackBar.failure(message: "GPS signal weak. Step outside or try again.");
     } finally {
-      setState(() => isLoadingLocation = false);
+      if (mounted) {
+        setState(() => isLoadingLocation = false);
+      }
     }
   }
 
@@ -276,8 +294,6 @@ class _LocationScreenState extends State<LocationScreen> {
                       options: MapOptions(
                         initialCenter: _initialPosition,
                         initialZoom: 14.0,
-                        // Prevent user from panning too far away if you want strictly "current location"
-                        // interactionOptions: InteractionOptions(flags: InteractiveFlag.pinchZoom),
                       ),
                       children: [
                         TileLayer(
@@ -335,6 +351,33 @@ class _LocationScreenState extends State<LocationScreen> {
                 ),
                 SizedBox(height: Dimensions.height20),
 
+                // --- GPS Accuracy Notice ---
+                Container(
+                  padding: EdgeInsets.all(Dimensions.height10),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(Dimensions.radius10),
+                    border: Border.all(color: Colors.blue.withOpacity(0.3)),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.info_outline, color: Colors.blue[700], size: Dimensions.iconSize20),
+                      SizedBox(width: Dimensions.width10),
+                      Expanded(
+                        child: Text(
+                          "Tip: For the most precise GPS accuracy, please step outside before generating your location.",
+                          style: TextStyle(
+                            fontSize: Dimensions.font13,
+                            color: Colors.blue[800],
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                SizedBox(height: Dimensions.height15),
+
                 // --- Location Address Input (Read Only / Generated) ---
                 GestureDetector(
                   onTap: getCurrentLocation,
@@ -370,6 +413,7 @@ class _LocationScreenState extends State<LocationScreen> {
                     authController.addNewLocation(selectedName!, address);
                   },
                 ),
+                SizedBox(height: Dimensions.height20),
               ],
             ),
           ),

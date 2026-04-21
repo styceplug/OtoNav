@@ -24,12 +24,12 @@ Future<void> main() async {
   Get.put(GlobalLoaderController(), permanent: true);
 
   HardwareKeyboard.instance.clearState();
-  // WidgetsFlutterBinding.ensureInitialized();
-  // await Firebase.initializeApp(
-  //   options: DefaultFirebaseOptions.currentPlatform,
-  // );
-  //
-  // FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
+  FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
   // await NotificationService().initialize();
 
   runApp(const MyApp());
@@ -54,7 +54,7 @@ class MyApp extends StatelessWidget {
             ),
 
             getPages: AppRoutes.routes,
-            initialRoute: AppRoutes.accountDeletion,
+            initialRoute: AppRoutes.splashScreen,
             builder: (context, child) {
               final loaderController = Get.find<GlobalLoaderController>();
               return Obx(() {

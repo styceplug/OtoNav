@@ -18,6 +18,7 @@ class AppConstants {
   static const String GET_PROFILE = '/api/auth/profile';
   static const String PUT_PROFILE_UPDATE = '/api/auth/profile';
   static const String REFRESH_TOKEN = '/api/auth/refresh-token';
+  static const String POST_FCM_TOKEN = 'api/users/fcm-token';
 
   static const String GET_ORDERS_LIST = '/api/orders';
 
@@ -34,7 +35,7 @@ class AppConstants {
   static String GET_SINGLE_ORDER(String id) => '/api/orders/$id';
 
 
-    static String getPngAsset(String image) {
+  static String getPngAsset(String image) {
     return 'assets/images/$image.png';
   }
   static String getGifAsset(String image) {

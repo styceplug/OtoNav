@@ -58,7 +58,7 @@ class OrderController extends GetxController {
     required String role,
   }) {
     return Uri.parse(
-      'wss://otonav-backend-production.up.railway.app/ws'
+      'wss://otonav-backend.onrender.com/ws'
           '?orderId=$orderId&userId=$userId&role=$role',
     );
   }
