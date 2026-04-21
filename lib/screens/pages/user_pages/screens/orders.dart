@@ -138,7 +138,7 @@ class _CustomerOrdersPageState extends State<CustomerOrdersPage> {
                 }
 
                 return Skeletonizer(
-                  enabled: isLoading, // ✅ Activates the shimmer effect
+                  enabled: isLoading,
                   child: ListView.builder(
                     padding: EdgeInsets.zero,
                     itemCount: displayOrders.length,

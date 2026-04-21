@@ -28,7 +28,26 @@ class AuthController extends GetxController {
 
 
 
+  Future<void> deleteSavedLocation(String label) async {
+    final userController = Get.find<UserController>();
+    final userModel = userController.userModel;
 
+    if (userModel.value == null || userModel.value!.locations == null) return;
+
+    List<LocationModel> previousLocations = List.from(userModel.value!.locations!);
+    userModel.value!.locations!.removeWhere((loc) => loc.label == label);
+    userModel.refresh();
+
+    Response response = await authRepo.deleteSavedLocation(label);
+
+    if (response.statusCode == 200 && response.body['success'] == true) {
+      CustomSnackBar.success(message: response.body['message'] ?? "Location deleted");
+    } else {
+      userModel.value!.locations = previousLocations;
+      userModel.refresh();
+      CustomSnackBar.failure(message: response.body['message'] ?? "Failed to delete location");
+    }
+  }
 
 
   Future<void> addNewLocation(String label, String address) async {

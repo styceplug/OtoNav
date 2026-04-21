@@ -38,6 +38,9 @@ class AppConstants {
   static String GET_SINGLE_ORDER(String id) => '/api/orders/$id';
 
 
+  static String DELETE_SAVED_LOCATION(String label) => '/api/customers/profile/locations/$label';
+
+
   static String getPngAsset(String image) {
     return 'assets/images/$image.png';
   }
