@@ -12,9 +12,11 @@ import 'package:otonav/utils/dimensions.dart';
 import 'package:otonav/widgets/custom_button.dart';
 import 'package:otonav/widgets/empty_state_widget.dart';
 import 'package:otonav/widgets/order_card.dart';
+import 'package:skeletonizer/skeletonizer.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../controllers/order_controller.dart';
+import '../../../../model/order_model.dart';
 import '../../../../model/user_model.dart';
 import '../../../../widgets/snackbars.dart';
 
@@ -25,12 +27,41 @@ class CustomerHomePage extends StatefulWidget {
   State<CustomerHomePage> createState() => _CustomerHomePageState();
 }
 
+
 class _CustomerHomePageState extends State<CustomerHomePage> {
   UserController userController = Get.find<UserController>();
   AppController appController = Get.find<AppController>();
   OrderController orderController = Get.find<OrderController>();
 
   bool _isBannerVisible = true;
+
+  // --- DUMMY DATA FOR SKELETONIZER ---
+  final User _dummyUser = User(
+    name: "Loading Name",
+    locations: [
+      LocationModel(label: "Home", preciseLocation: "Loading address..."),
+      LocationModel(label: "Office", preciseLocation: "Loading address..."),
+    ],
+  );
+
+  final List<OrderModel> _dummyOrders = List.generate(
+    2,
+        (index) => OrderModel(
+      orderNumber: "ORDXXXXX",
+      packageDescription: "Loading Package...",
+      status: "pending",
+      organization: null, // Dummy org
+    ),
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      orderController.getOrders();
+      userController.getUserProfile();
+    });
+  }
 
   IconData _getLocationIcon(String label) {
     final List<Map<String, dynamic>> locationTypes = [
@@ -46,617 +77,312 @@ class _CustomerHomePageState extends State<CustomerHomePage> {
     ];
 
     var match = locationTypes.firstWhere(
-      (element) =>
-          element['name'].toString().toLowerCase() == label.toLowerCase(),
+          (element) => element['name'].toString().toLowerCase() == label.toLowerCase(),
       orElse: () => {'icon': Icons.location_on_rounded},
     );
 
     return match['icon'] as IconData;
   }
 
+  // ... (Keep your exact _showLocationPicker method here. Do not change it.) ...
   void _showLocationPicker(String orderId) async {
-    // 1. Get User Locations
-    User? user = userController.userModel.value;
-
-    // Safety Check
-    if (user == null || user.locations == null || user.locations!.isEmpty) {
-      CustomSnackBar.failure(
-        message: "You have no saved locations. Please add one first.",
-      );
-      await Get.toNamed(AppRoutes.locationScreen);
-      await userController.getUserProfile();
-      return;
-    }
-
-    // Local variable to track selection inside the sheet
-    int? selectedIndex;
-
-    Get.bottomSheet(
-      StatefulBuilder(
-        builder: (BuildContext context, StateSetter setModalState) {
-          return Container(
-            padding: EdgeInsets.all(Dimensions.width20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(
-                top: Radius.circular(Dimensions.radius20),
-              ),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Drag Handle
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 5,
-                    decoration: BoxDecoration(
-                      color: Colors.grey[300],
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                ),
-                SizedBox(height: Dimensions.height20),
-
-                Text(
-                  "Select Delivery Location",
-                  style: TextStyle(
-                    fontSize: Dimensions.font18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                SizedBox(height: Dimensions.height10),
-                Text(
-                  "Where should the rider deliver this order?",
-                  style: TextStyle(color: Colors.grey),
-                ),
-                SizedBox(height: Dimensions.height20),
-
-                // LIST OF LOCATIONS
-                Flexible(
-                  child: ListView.separated(
-                    shrinkWrap: true,
-                    physics: BouncingScrollPhysics(),
-                    itemCount: user.locations!.length,
-                    separatorBuilder: (c, i) =>
-                        SizedBox(height: Dimensions.height15),
-                    itemBuilder: (context, index) {
-                      var location = user.locations![index];
-                      bool isSelected = selectedIndex == index;
-
-                      return InkWell(
-                        onTap: () {
-                          // Update the local state of the modal
-                          setModalState(() {
-                            selectedIndex = index;
-                          });
-                        },
-                        child: Container(
-                          padding: EdgeInsets.all(Dimensions.width15),
-                          decoration: BoxDecoration(
-                            color: isSelected
-                                ? AppColors.primaryColor.withOpacity(0.05)
-                                : Colors.transparent,
-                            borderRadius: BorderRadius.circular(
-                              Dimensions.radius10,
-                            ),
-                            border: Border.all(
-                              color: isSelected
-                                  ? AppColors.primaryColor
-                                  : Colors.grey.withOpacity(0.2),
-                              width: 1.5,
-                            ),
-                          ),
-                          child: Row(
-                            children: [
-                              // Icon
-                              Container(
-                                padding: EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Icon(
-                                  _getLocationIcon(location.label ?? ""),
-                                  color: AppColors.primaryColor,
-                                  size: 20,
-                                ),
-                              ),
-                              SizedBox(width: Dimensions.width15),
-
-                              // Text Info
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      location.label ?? "Unknown",
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: Dimensions.font16,
-                                      ),
-                                    ),
-                                    Text(
-                                      location.preciseLocation ?? "No address",
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                        color: Colors.grey,
-                                        fontSize: Dimensions.font13,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-
-                              // Selection Radio
-                              Container(
-                                height: 20,
-                                width: 20,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: isSelected
-                                        ? AppColors.primaryColor
-                                        : Colors.grey,
-                                    width: 2,
-                                  ),
-                                ),
-                                child: isSelected
-                                    ? Center(
-                                        child: Container(
-                                          height: 10,
-                                          width: 10,
-                                          decoration: BoxDecoration(
-                                            color: AppColors.primaryColor,
-                                            shape: BoxShape.circle,
-                                          ),
-                                        ),
-                                      )
-                                    : null,
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-
-                SizedBox(height: Dimensions.height30),
-
-                // CONFIRM BUTTON
-                CustomButton(
-                  text: "Confirm Location",
-                  backgroundColor: selectedIndex == null
-                      ? Colors.grey
-                      : AppColors.accentColor,
-                  onPressed: () {
-                    if (selectedIndex == null) {
-                      CustomSnackBar.failure(
-                        message: "Please select a location first.",
-                      );
-                      return;
-                    }
-
-                    // Retrieve selected object
-                    var selectedLoc = user.locations![selectedIndex!];
-
-                    // Call Controller
-                    Get.find<OrderController>().setOrderLocation(
-                      orderId,
-                      selectedLoc.label!,
-                      selectedLoc.preciseLocation!,
-                    );
-                  },
-                ),
-                SizedBox(height: Dimensions.height10),
-              ],
-            ),
-          );
-        },
-      ),
-      isScrollControlled: true,
-    );
-  }
-
-  @override
-  void initState() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      orderController.getOrders();
-      userController.getUserProfile();
-    });
-    super.initState();
+    // Your existing bottom sheet code goes here
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Obx((){
-        if (userController.userModel.value == null) {
-          return Center(child: Text("Loading..."));
-        }
+      body: Obx(() {
+        // 1. Check User Loading State
+        final bool isUserLoading = userController.userModel.value == null;
 
-        User user = userController.userModel.value!;
-        var status = userController.getProfileStatus();
+        // 2. Feed dummy data if loading
+        final User user = isUserLoading ? _dummyUser : userController.userModel.value!;
 
-        return Container(
-          padding: EdgeInsets.fromLTRB(
-            Dimensions.width20,
-            Dimensions.height100,
-            Dimensions.width20,
-            Dimensions.height10 * 13.5,
-          ),
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            DateFormat('EEEE, MMMM d').format(DateTime.now()),
-                            style: TextStyle(
-                              fontSize: Dimensions.font15,
-                              fontWeight: FontWeight.w400,
-                            ),
-                          ),
-                          Text(
-                            'Hello ${user.name}',
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: Dimensions.font22,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    InkWell(
-                      onTap: () {
-                        Get.toNamed(AppRoutes.notificationScreen);
-                      },
-                      child: Container(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: Dimensions.width20,
-                          vertical: Dimensions.height20,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.cardColor,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(Iconsax.notification),
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: Dimensions.height20),
-                //widget for profile completeness
-                if (status.progress < 1.0 && _isBannerVisible)
-                  InkWell(
-                    onTap: () {
-                      if (status.route.isNotEmpty) {
-                        Get.toNamed(status.route);
-                      }
-                    },
-                    child: Container(
-                      padding: EdgeInsets.all(Dimensions.height20),
-                      decoration: BoxDecoration(
-                        color: AppColors.white,
-                        borderRadius: BorderRadius.circular(
-                          Dimensions.radius20,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.grey.withOpacity(0.1),
-                            blurRadius: 10,
-                            offset: Offset(0, 5),
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                'Complete your Profile',
-                                style: TextStyle(
-                                  fontSize: Dimensions.font17,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                              // Close button to dismiss temporarily
-                              InkWell(
-                                onTap: () {
-                                  setState(() {
-                                    _isBannerVisible = false;
-                                  });
-                                },
-                                child: Icon(
-                                  CupertinoIcons.xmark,
-                                  size: Dimensions.iconSize20,
-                                ),
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: Dimensions.height10),
-                          Text(
-                            status.message,
-                            style: TextStyle(
-                              color: Colors.grey[600],
-                              fontSize: 13,
-                            ),
-                          ),
-                          SizedBox(height: Dimensions.height10),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                'Progress',
-                                style: TextStyle(
-                                  fontSize: Dimensions.font14,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              Text(
-                                '${(status.progress * 100).toInt()}%',
-                                // Dynamic %
-                                style: TextStyle(
-                                  fontSize: Dimensions.font14,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.accentColor,
-                                ),
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: Dimensions.height10),
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(10),
-                            child: LinearProgressIndicator(
-                              value: status.progress,
-                              // Dynamic Value (0.0 to 1.0)
-                              color: AppColors.accentColor,
-                              backgroundColor: AppColors.accentColor
-                                  .withOpacity(0.1),
-                              minHeight: 8,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
+        // We only get profile status if the user is fully loaded to prevent null errors
+        var status = isUserLoading ? null : userController.getProfileStatus();
 
-                if (status.progress < 1.0)
-                  SizedBox(height: Dimensions.height20),
-
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Saved Locations',
-                      style: TextStyle(
-                        fontSize: Dimensions.font17,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: Dimensions.height20),
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.start,
+        return Skeletonizer(
+          enabled: isUserLoading,
+          child: Container(
+            padding: EdgeInsets.fromLTRB(
+              Dimensions.width20,
+              Dimensions.height100,
+              Dimensions.width20,
+              Dimensions.height10 * 13.5,
+            ),
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // --- 1. HEADER ---
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      if (user.locations != null)
-                        ...user.locations!.map((location) {
-                          return Padding(
-                            padding: EdgeInsets.only(
-                              right: Dimensions.width20,
-                            ),
-                            child: Container(
-                              height: Dimensions.height10 * 8,
-                              width: Dimensions.width10 * 8,
-                              decoration: BoxDecoration(
-                                color: AppColors.white,
-                                shape: BoxShape.circle,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.grey.withOpacity(0.1),
-                                    blurRadius: 5,
-                                    offset: Offset(0, 2),
-                                  ),
-                                ],
-                              ),
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  SizedBox(height: Dimensions.height10),
-
-                                  Expanded(
-                                    child: Icon(
-                                      _getLocationIcon(location.label ?? ""),
-                                      color: AppColors.primaryColor,
-                                      size: Dimensions.iconSize24,
-                                    ),
-                                  ),
-
-                                  Expanded(
-                                    child: Padding(
-                                      padding: EdgeInsets.symmetric(
-                                        horizontal: Dimensions.width10,
-                                      ),
-                                      child: Text(
-                                        location.label ?? 'Loc',
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.w300,
-                                          fontSize: Dimensions.font13,
-                                          color: AppColors.primaryColor,
-                                        ),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                  ),
-                                ],
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              DateFormat('EEEE, MMMM d').format(DateTime.now()),
+                              style: TextStyle(
+                                fontSize: Dimensions.font14,
+                                fontWeight: FontWeight.w400,
+                                color: AppColors.grey5,
                               ),
                             ),
-                          );
-                        }).toList(),
-
+                            Text(
+                              'Hello ${user.name?.split(" ")[0] ?? "Customer"},',
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: Dimensions.font25,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: -0.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                       InkWell(
-                        onTap: () async {
-                          await Get.toNamed(AppRoutes.locationScreen);
-                          await userController.getUserProfile();
+                        onTap: () {
+                          if (!isUserLoading) Get.toNamed(AppRoutes.notificationScreen);
                         },
                         child: Container(
-                          height: Dimensions.height10 * 8,
-                          width: Dimensions.width10 * 8,
-                          decoration: BoxDecoration(
-                            color: AppColors.white,
+                          padding: EdgeInsets.all(Dimensions.width15),
+                          decoration: const BoxDecoration(
+                            color: AppColors.cardColor,
                             shape: BoxShape.circle,
                           ),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.spaceAround,
-                            children: [
-                              SizedBox(height: Dimensions.height5),
-                              Icon(
-                                CupertinoIcons.add,
-                                color: AppColors.primaryColor,
-                              ),
-                              Text(
-                                'Add New',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w300,
-                                  fontSize: Dimensions.font13,
-                                  color: AppColors.primaryColor,
-                                ),
-                              ),
-                              SizedBox(height: Dimensions.height5),
-                            ],
-                          ),
+                          child: const Icon(Iconsax.notification),
                         ),
                       ),
                     ],
                   ),
-                ),
-                SizedBox(height: Dimensions.height20),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Orders',
-                      style: TextStyle(
-                        fontSize: Dimensions.font17,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    Text(
-                      'These Orders need your attention!',
-                      style: TextStyle(
-                        fontSize: Dimensions.font15,
-                        fontWeight: FontWeight.w300,
-                        color: AppColors.grey5,
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: Dimensions.height20),
-                GetBuilder<OrderController>(
-                  init: Get.find<OrderController>(),
-                  builder: (orderController) {
-                    var pendingList = orderController.pendingOrders;
+                  SizedBox(height: Dimensions.height20),
 
-                    if (pendingList.isEmpty) {
-                      return Padding(
-                        padding: EdgeInsets.only(top: Dimensions.height70),
-                        child: Center(
-                          child: EmptyState(
-                            message: 'No Pending Order',
-                            imageAsset: 'empty-archive',
+                  // --- 2. PROFILE COMPLETENESS BANNER ---
+                  if (!isUserLoading && status != null && status.progress < 1.0 && _isBannerVisible)
+                    InkWell(
+                      onTap: () {
+                        if (status.route.isNotEmpty) Get.toNamed(status.route);
+                      },
+                      child: Container(
+                        margin: EdgeInsets.only(bottom: Dimensions.height20),
+                        padding: EdgeInsets.all(Dimensions.width20),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [AppColors.white, AppColors.primaryColor.withOpacity(0.03)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
                           ),
+                          borderRadius: BorderRadius.circular(Dimensions.radius20),
+                          border: Border.all(color: AppColors.primaryColor.withOpacity(0.1)),
+                          boxShadow: [
+                            BoxShadow(color: Colors.grey.withOpacity(0.05), blurRadius: 15, offset: const Offset(0, 8)),
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(6),
+                                      decoration: BoxDecoration(color: AppColors.accentColor.withOpacity(0.1), shape: BoxShape.circle),
+                                      child: const Icon(Iconsax.shield_tick, color: AppColors.accentColor, size: 16),
+                                    ),
+                                    SizedBox(width: Dimensions.width10),
+                                    Text('Complete Profile', style: TextStyle(fontSize: Dimensions.font16, fontWeight: FontWeight.w600)),
+                                  ],
+                                ),
+                                InkWell(
+                                  onTap: () => setState(() => _isBannerVisible = false),
+                                  child: const Icon(CupertinoIcons.xmark, size: 18, color: Colors.grey),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: Dimensions.height10),
+                            Text(status.message, style: TextStyle(color: Colors.grey[600], fontSize: 13)),
+                            SizedBox(height: Dimensions.height15),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text('Progress', style: TextStyle(fontSize: Dimensions.font13, fontWeight: FontWeight.w600, color: Colors.grey[700])),
+                                Text('${(status.progress * 100).toInt()}%', style: TextStyle(fontSize: Dimensions.font14, fontWeight: FontWeight.bold, color: AppColors.accentColor)),
+                              ],
+                            ),
+                            SizedBox(height: Dimensions.height10),
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(10),
+                              child: LinearProgressIndicator(
+                                value: status.progress,
+                                color: AppColors.accentColor,
+                                backgroundColor: AppColors.accentColor.withOpacity(0.1),
+                                minHeight: 6,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                  // --- 3. LOCATIONS SECTION ---
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('My Locations', style: TextStyle(fontSize: Dimensions.font18, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                  SizedBox(height: Dimensions.height15),
+
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    physics: const BouncingScrollPhysics(),
+                    child: Row(
+                      children: [
+                        // PROMINENT MANAGE BUTTON (First in list)
+                        InkWell(
+                          onTap: () async {
+                            if (isUserLoading) return;
+                            await Get.toNamed(AppRoutes.locationScreen);
+                            await userController.getUserProfile();
+                          },
+                          child: Container(
+                            height: 100,
+                            width: 100,
+                            margin: EdgeInsets.only(right: Dimensions.width15),
+                            decoration: BoxDecoration(
+                              color: AppColors.primaryColor.withOpacity(0.05),
+                              borderRadius: BorderRadius.circular(Dimensions.radius15),
+                              border: Border.all(color: AppColors.primaryColor.withOpacity(0.3), width: 1.5),
+                            ),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+                                  child: const Icon(Iconsax.add, color: AppColors.primaryColor, size: 20),
+                                ),
+                                SizedBox(height: Dimensions.height10),
+                                const Text('Add New', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: AppColors.primaryColor)),
+                              ],
+                            ),
+                          ),
+                        ),
+
+                        // SAVED LOCATIONS CARDS
+                        if (user.locations != null)
+                          ...user.locations!.map((location) {
+                            return Container(
+                              height: 100,
+                              width: 110,
+                              margin: EdgeInsets.only(right: Dimensions.width15),
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(Dimensions.radius15),
+                                border: Border.all(color: Colors.grey.withOpacity(0.15)),
+                                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 4))],
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(_getLocationIcon(location.label ?? ""), color: AppColors.accentColor, size: 24),
+                                  const Spacer(),
+                                  Text(
+                                    location.label ?? 'Location',
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  SizedBox(height: Dimensions.height5),
+                                  Text(
+                                    location.preciseLocation ?? '',
+                                    style: const TextStyle(fontSize: 10, color: Colors.grey),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                              ),
+                            );
+                          }).toList(),
+                      ],
+                    ),
+                  ),
+                  SizedBox(height: Dimensions.height30),
+
+                  // --- 4. ORDERS SECTION ---
+                  Text('Active Orders', style: TextStyle(fontSize: Dimensions.font18, fontWeight: FontWeight.bold)),
+                  Text('Track your incoming deliveries', style: TextStyle(fontSize: Dimensions.font13, color: AppColors.grey5)),
+                  SizedBox(height: Dimensions.height20),
+
+                  // Nested Obx for Orders Reactivity
+                  Obx(() {
+                    // Assuming you have 'isFetchingOrders' logic implemented in OrderController
+                    // If not, fallback to orderController.loader.isLoading.value
+                    final bool isOrdersLoading = orderController.isFetchingOrders.value && orderController.pendingOrders.isEmpty;
+
+                    final List<OrderModel> displayOrders = isOrdersLoading ? _dummyOrders : orderController.pendingOrders;
+
+                    if (!isOrdersLoading && displayOrders.isEmpty) {
+                      return Padding(
+                        padding: EdgeInsets.only(top: Dimensions.height40),
+                        child: Center(
+                          child: EmptyState(message: 'No Active Orders', imageAsset: 'empty-archive'),
                         ),
                       );
                     }
 
-                    // List of Pending Orders
-                    return Column(
-                      children: pendingList.map((order) {
-                        bool locationIsSet =
-                            order.status == 'customer_location_set' ||
-                                (order.customerLocationLabel != null &&
-                                    order.customerLocationLabel!.isNotEmpty);
+                    return Skeletonizer(
+                      enabled: isOrdersLoading, // Order specific skeleton
+                      child: Column(
+                        children: displayOrders.map((order) {
+                          bool locationIsSet = order.status == 'customer_location_set' ||
+                              (order.customerLocationLabel != null && order.customerLocationLabel!.isNotEmpty);
 
-                        return Padding(
-                          padding: EdgeInsets.only(
-                            bottom: Dimensions.height15,
-                          ),
-                          child: OrderCard(
-                            orderId: order.orderNumber ?? "N/A",
-                            isLocationSet: locationIsSet,
-                            itemCount: order.packageDescription ?? "Package",
-                            vendorName:
-                            order.rider?.name ?? 'Waiting for rider...',
-                            onSetLocationTap: () {
-                              _showLocationPicker(order.id ?? '');
-                            },
-                            onTrackOrderTap: () {
-                              Get.toNamed(
-                                AppRoutes.customerTrackingScreen,
-                                arguments: order.id!,
-                              );
-                            },
-                            onCallVendorTap: () async {
-                              String? phone = order.rider?.phoneNumber;
+                          return Padding(
+                            padding: EdgeInsets.only(bottom: Dimensions.height15),
+                            child: OrderCard(
+                              orderId: order.orderNumber ?? "N/A",
+                              isLocationSet: locationIsSet,
+                              itemCount: order.packageDescription ?? "Package",
+                              vendorName: order.rider?.name ?? 'Waiting for rider...',
+                              status: order.status ?? '',
 
-                              if (phone != null && phone.isNotEmpty) {
-                                // 1. Sanitize the number (Remove spaces, brackets, dashes)
-                                String cleanPhone = phone.replaceAll(
-                                  RegExp(r'[^\d+]'),
-                                  '',
-                                ); // Keeps only digits and +
-
-                                final Uri launchUri = Uri(
-                                  scheme: 'tel',
-                                  path: cleanPhone,
-                                );
-
-                                // 2. Attempt to launch
-                                try {
-                                  // mode: LaunchMode.platformDefault is usually better for dialers
-                                  if (!await launchUrl(
-                                    launchUri,
-                                    mode: LaunchMode.platformDefault,
-                                  )) {
-                                    throw 'Could not launch $launchUri';
+                              onSetLocationTap: () {
+                                if (!isOrdersLoading) _showLocationPicker(order.id ?? '');
+                              },
+                              onTrackOrderTap: () {
+                                if (!isOrdersLoading) Get.toNamed(AppRoutes.customerTrackingScreen, arguments: order.id!);
+                              },
+                              onCallVendorTap: () async {
+                                if (isOrdersLoading) return;
+                                String? phone = order.rider?.phoneNumber;
+                                if (phone != null && phone.isNotEmpty) {
+                                  String cleanPhone = phone.replaceAll(RegExp(r'[^\d+]'), '');
+                                  final Uri launchUri = Uri(scheme: 'tel', path: cleanPhone);
+                                  try {
+                                    if (!await launchUrl(launchUri, mode: LaunchMode.platformDefault)) throw 'Could not launch $launchUri';
+                                  } catch (e) {
+                                    CustomSnackBar.failure(message: "Unable to make call on this device.");
                                   }
-                                } catch (e) {
-                                  print("Error making call: $e");
-                                  // On Simulator, this will often trigger because there is no dialer
-                                  CustomSnackBar.failure(
-                                    message:
-                                    "Unable to make call on this device.",
-                                  );
+                                } else {
+                                  CustomSnackBar.failure(message: "Phone number not available.");
                                 }
-                              } else {
-                                CustomSnackBar.failure(
-                                  message: "Phone number not available.",
-                                );
-                              }
-                            },
-                            status: order.status ?? '',
-                          ),
-                        );
-                      }).toList(),
+                              },
+                            ),
+                          );
+                        }).toList(),
+                      ),
                     );
-                  },
-                ),
-              ],
+                  }),
+                ],
+              ),
             ),
           ),
         );

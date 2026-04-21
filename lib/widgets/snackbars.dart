@@ -5,6 +5,9 @@ import 'package:flutter/material.dart';
 
 
 
+import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+
 class CustomSnackBar {
   static OverlayEntry? _overlayEntry;
   static bool _isVisible = false;
@@ -16,11 +19,15 @@ class CustomSnackBar {
     required IconData icon,
   }) {
     if (_isVisible) return;
+
+    // ✅ FIX: Grab the overlay directly from GetX's root navigator
+    final overlay = Get.key.currentState?.overlay;
+    if (overlay == null) return; // Failsafe if called before app is ready
+
     _isVisible = true;
 
-    final overlay = Overlay.of(Get.overlayContext!);
     final animationController = AnimationController(
-      vsync: overlay,
+      vsync: overlay, // OverlayState acts as a valid TickerProvider
       duration: const Duration(milliseconds: 300),
     );
 
@@ -120,7 +127,9 @@ class CustomSnackBar {
     Color backgroundColor = Colors.black12,
     Duration duration = const Duration(seconds: 2),
   }) {
-    final overlay = Overlay.of(Get.overlayContext!);
+    // ✅ FIX: Grab the overlay directly from GetX's root navigator
+    final overlay = Get.key.currentState?.overlay;
+    if (overlay == null) return;
 
     final opacityNotifier = ValueNotifier<double>(0.0);
 
@@ -139,8 +148,7 @@ class CustomSnackBar {
                 child: Material(
                   color: Colors.transparent,
                   child: Container(
-                    padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                     decoration: BoxDecoration(
                       color: backgroundColor.withOpacity(0.3),
                       borderRadius: BorderRadius.circular(25),
@@ -148,7 +156,7 @@ class CustomSnackBar {
                     child: Text(
                       message,
                       textAlign: TextAlign.center,
-                      style:  TextStyle(
+                      style: TextStyle(
                         color: Colors.white.withOpacity(0.7),
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
@@ -178,5 +186,4 @@ class CustomSnackBar {
     });
   }
 }
-
 

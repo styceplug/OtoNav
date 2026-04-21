@@ -3,18 +3,17 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:intl/intl.dart';
-import 'package:otonav/controllers/user_controller.dart';
+import 'package:skeletonizer/skeletonizer.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:otonav/controllers/order_controller.dart';
+import 'package:otonav/controllers/user_controller.dart';
+import 'package:otonav/model/user_model.dart';
+import 'package:otonav/model/order_model.dart'; // Ensure OrderModel is imported
+import 'package:otonav/utils/app_constants.dart';
+import 'package:otonav/utils/colors.dart';
+import 'package:otonav/utils/dimensions.dart';
 
-import '../../../../controllers/order_controller.dart';
-import '../../../../model/user_model.dart';
-import '../../../../routes/routes.dart';
-import '../../../../utils/app_constants.dart';
-import '../../../../utils/colors.dart';
-import '../../../../utils/dimensions.dart';
-import '../../../../widgets/empty_state_widget.dart';
 import '../../../../widgets/rider_order_card.dart';
-import '../../../../widgets/snackbars.dart';
 
 class RiderHomePage extends StatefulWidget {
   const RiderHomePage({super.key});
@@ -24,242 +23,252 @@ class RiderHomePage extends StatefulWidget {
 }
 
 class _RiderHomePageState extends State<RiderHomePage> {
-  bool online = true;
-
   UserController userController = Get.find<UserController>();
+  OrderController orderController = Get.find<OrderController>();
+
+  final User _dummyUser = User(
+    name: "Loading Name",
+    isActive: true,
+    isOtonavRecommended: true,
+  )..jobAnalytics = JobAnalytics.fromJson({
+    'performanceScore': 10,
+    'summary': {'completedOrders': 000}
+  });
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Obx((){
-        if (userController.userModel.value == null) {
-          return Center(child: Text("Loading..."));
-        }
+      body: Obx(() {
+        // 1. Check if user data is still loading
+        final bool isUserLoading = userController.userModel.value == null;
 
-        User user = userController.userModel.value!;
+        // 2. Feed dummy data if loading, otherwise use real data
+        final User user = isUserLoading ? _dummyUser : userController.userModel.value!;
 
-        return Container(
-          padding: EdgeInsets.fromLTRB(
-            Dimensions.width20,
-            Dimensions.height100,
-            Dimensions.width20,
-            Dimensions.height10 * 13.5,
-          ),
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          DateFormat('EEEE, MMMM d').format(DateTime.now()),
-                          style: TextStyle(
-                            fontSize: Dimensions.font15,
-                            fontWeight: FontWeight.w400,
-                          ),
-                        ),
-                        Text(
-                          'Hello ${user.name}',
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: Dimensions.font22,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                    InkWell(
-                      onTap: (){
-                        Get.toNamed(AppRoutes.notificationScreen);
-                      },
-                      child: Container(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: Dimensions.width20,
-                          vertical: Dimensions.height20,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.cardColor,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(Iconsax.notification),
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: Dimensions.height20),
-                Container(
-                  padding: EdgeInsets.symmetric(
-                    vertical: Dimensions.height20,
-                    horizontal: Dimensions.width20,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.white,
-                    borderRadius: BorderRadius.circular(Dimensions.radius20),
-                  ),
-                  child: Row(
+        final bool isOnline = user.isActive ?? true;
+        final score = user.jobAnalytics?.performanceScore.toString() ?? "N/A";
+        final totalDeliveries = user.jobAnalytics?.summary['completedOrders']?.toString() ?? "0";
+
+        return Skeletonizer(
+          enabled: isUserLoading, // ✅ Skeletonizer activates here
+          child: Container(
+            padding: EdgeInsets.fromLTRB(
+              Dimensions.width20,
+              Dimensions.height100,
+              Dimensions.width20,
+              Dimensions.height10 * 13.5,
+            ),
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // --- HEADER ---
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Image.asset(
-                        AppConstants.getPngAsset('online'),
-                        height: Dimensions.height50,
-                        width: Dimensions.width50,
-                      ),
-                      SizedBox(width: Dimensions.width20),
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'You are online',
-                            style: TextStyle(
-                              fontSize: Dimensions.font17,
-                              fontWeight: FontWeight.w500,
-                              color: AppColors.black,
-                            ),
-                          ),
-                          Text(
-                            'Waiting on new orders',
+                            DateFormat('EEEE, MMMM d').format(DateTime.now()),
                             style: TextStyle(
                               fontSize: Dimensions.font15,
-                              fontWeight: FontWeight.w300,
-                              color: AppColors.black,
+                              fontWeight: FontWeight.w400,
+                              color: AppColors.grey5,
                             ),
+                          ),
+                          Row(
+                            children: [
+                              Text(
+                                'Hello ${user.name?.split(" ")[0] ?? "Rider"},',
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: Dimensions.font22,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              if (user.isOtonavRecommended == true) ...[
+                                SizedBox(width: Dimensions.width5),
+                                const Icon(Icons.verified, color: AppColors.primaryColor, size: 20),
+                              ]
+                            ],
                           ),
                         ],
                       ),
-                      Spacer(),
-                      CupertinoSwitch(
-                        value: online,
-                        onChanged: (online) {},
-                        activeColor: AppColors.accentColor,
+                      InkWell(
+                        onTap: () {},
+                        child: Container(
+                          padding: EdgeInsets.all(Dimensions.width15),
+                          decoration: const BoxDecoration(
+                            color: AppColors.cardColor,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Iconsax.notification),
+                        ),
                       ),
                     ],
                   ),
-                ),
-                SizedBox(height: Dimensions.height20),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Orders',
-                      style: TextStyle(
-                        fontSize: Dimensions.font17,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    Text(
-                      'These Orders need your attention!',
-                      style: TextStyle(
-                        fontSize: Dimensions.font15,
-                        fontWeight: FontWeight.w300,
-                        color: AppColors.grey5,
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: Dimensions.height20),
-                GetBuilder<OrderController>(
-                  init: Get.find<OrderController>(),
-                  builder: (orderController) {
-                    var pendingList = orderController.pendingOrders;
+                  SizedBox(height: Dimensions.height20),
 
-                    if (pendingList.isEmpty) {
-                      return Padding(
-                        padding: EdgeInsets.only(top: Dimensions.height70),
-                        child: Center(
-                          child: EmptyState(
-                            message: 'No Pending Order',
-                            imageAsset: 'empty-archive',
+                  // --- QUICK STATS ROW ---
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Container(
+                          padding: EdgeInsets.all(Dimensions.height15),
+                          decoration: BoxDecoration(
+                            color: AppColors.primaryColor.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(Dimensions.radius15),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Icon(Iconsax.trend_up, color: AppColors.primaryColor),
+                              SizedBox(height: Dimensions.height10),
+                              Text("$score of 100", style: TextStyle(fontSize: Dimensions.font20, fontWeight: FontWeight.bold, color: AppColors.accentColor)),
+                              const Text("Performance", style: TextStyle(fontSize: 12)),
+                            ],
                           ),
                         ),
+                      ),
+                      SizedBox(width: Dimensions.width15),
+                      Expanded(
+                        child: Container(
+                          padding: EdgeInsets.all(Dimensions.height15),
+                          decoration: BoxDecoration(
+                            color: AppColors.success.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(Dimensions.radius15),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Icon(Iconsax.box_tick, color: AppColors.success),
+                              SizedBox(height: Dimensions.height10),
+                              Text(totalDeliveries, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.primaryColor)),
+                              const Text("Total Deliveries", style: TextStyle(fontSize: 12)),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: Dimensions.height20),
+
+                  // --- ONLINE TOGGLE ---
+                  Container(
+                    padding: EdgeInsets.symmetric(vertical: Dimensions.height15, horizontal: Dimensions.width20),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(Dimensions.radius20),
+                      border: Border.all(color: AppColors.grey2),
+                      boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2))],
+                    ),
+                    child: Row(
+                      children: [
+                        Image.asset(
+                          AppConstants.getPngAsset(isOnline ? 'online' : 'profile-icon'),
+                          height: Dimensions.height40,
+                          width: Dimensions.width40,
+                        ),
+                        SizedBox(width: Dimensions.width15),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                isOnline ? 'You are online' : 'You are offline',
+                                style: TextStyle(fontSize: Dimensions.font16, fontWeight: FontWeight.w600),
+                              ),
+                              Text(
+                                isOnline ? 'Waiting on new orders' : 'Go online to receive orders',
+                                style: TextStyle(fontSize: Dimensions.font13, color: AppColors.grey5),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ),
+                        CupertinoSwitch(
+                          value: isOnline,
+                          onChanged: (val) {
+                            if (!isUserLoading) userController.toggleRiderActivity();
+                          },
+                          activeColor: AppColors.success,
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(height: Dimensions.height30),
+
+                  // --- ORDERS LIST HEADER ---
+                  Text('Pending Orders', style: TextStyle(fontSize: Dimensions.font18, fontWeight: FontWeight.w600)),
+                  Text('These orders need your attention!', style: TextStyle(fontSize: Dimensions.font14, color: AppColors.grey5)),
+                  SizedBox(height: Dimensions.height15),
+
+                  // --- ORDERS LIST (Nested Reactivity) ---
+                  // ✅ Obx specifically for orders so only this list rebuilds when orders arrive
+                  Obx(() {
+                    final bool isOrdersLoading = orderController.loader.isLoading.value && orderController.pendingOrders.isEmpty;
+
+                    if (!isOnline && !isUserLoading) {
+                      return Padding(
+                        padding: EdgeInsets.only(top: Dimensions.height40),
+                        child: Center(child: Text("Go online to view orders.", style: TextStyle(color: AppColors.grey5))),
                       );
                     }
 
-                    // List of Pending Orders
-                    return Column(
-                      children: pendingList.map((order) {
+                    // Feed dummy order array to Skeletonizer if loading
+                    final List<OrderModel> displayOrders = isOrdersLoading
+                        ? [OrderModel(orderNumber: "ORDXXXXX", packageDescription: "Loading Package...")]
+                        : orderController.pendingOrders;
 
-                        return Padding(
-                          padding: EdgeInsets.only(
-                            bottom: Dimensions.height15,
-                          ),
-                          child: RiderOrderCard(
-                            orderId: order.orderNumber ?? "N/A",
-                            itemCount: order.packageDescription ?? "Package",
-                            onCallCustomerTap: () async {
-                              String? phone = order.rider?.phoneNumber;
+                    if (displayOrders.isEmpty) {
+                      return Padding(
+                        padding: EdgeInsets.only(top: Dimensions.height40),
+                        child: const Center(child: Text("No pending orders at the moment.")),
+                      );
+                    }
 
-                              if (phone != null && phone.isNotEmpty) {
-                                // 1. Sanitize the number (Remove spaces, brackets, dashes)
-                                String cleanPhone = phone.replaceAll(
-                                  RegExp(r'[^\d+]'),
-                                  '',
-                                ); // Keeps only digits and +
+                    return Skeletonizer(
+                      enabled: isOrdersLoading, // ✅ Order-specific skeleton
+                      child: Column(
+                        children: displayOrders.map((order) {
+                          return Padding(
+                            padding: EdgeInsets.only(bottom: Dimensions.height15),
+                            child: RiderOrderCard(
+                              orderId: order.orderNumber ?? "N/A",
+                              itemCount: order.packageDescription ?? "Package",
+                              status: order.status ?? 'pending',
+                              businessName: order.organization?.name ?? 'Loading...',
+                              customerName: order.customer?.name ?? 'Awaiting Info',
+                              customerLocationPrecise: order.customerLocationPrecise ?? 'Awaiting Location',
+                              customerLocationLabel: order.customerLocationLabel ?? '',
+                              pickupLocation: order.organization?.address ?? 'Loading...',
 
-                                final Uri launchUri = Uri(
-                                  scheme: 'tel',
-                                  path: cleanPhone,
-                                );
-
-                                // 2. Attempt to launch
-                                try {
-                                  // mode: LaunchMode.platformDefault is usually better for dialers
-                                  if (!await launchUrl(
-                                    launchUri,
-                                    mode: LaunchMode.platformDefault,
-                                  )) {
-                                    throw 'Could not launch $launchUri';
-                                  }
-                                } catch (e) {
-                                  print("Error making call: $e");
-                                  // On Simulator, this will often trigger because there is no dialer
-                                  CustomSnackBar.failure(
-                                    message:
-                                    "Unable to make call on this device.",
-                                  );
+                              onStartDeliveryTap: () => orderController.acceptOrder(order.id!),
+                              onCancelDeliveryTap: () => showDeclineDialog(onConfirm: () => orderController.cancelOrder(order.id!)),
+                              onCallCustomerTap: () async {
+                                String? phone = order.rider?.phoneNumber;
+                                if (phone != null && phone.isNotEmpty) {
+                                  String cleanPhone = phone.replaceAll(RegExp(r'[^\d+]'), '');
+                                  final Uri launchUri = Uri(scheme: 'tel', path: cleanPhone);
+                                  if (await canLaunchUrl(launchUri)) await launchUrl(launchUri, mode: LaunchMode.platformDefault);
                                 }
-                              } else {
-                                CustomSnackBar.failure(
-                                  message: "Phone number not available.",
-                                );
-                              }
-                            },
-                            status: order.status ?? '',
-                            customerName:
-                            order.customer?.name ??
-                                'Customer Yet to Verify Data',
-                            customerLocationPrecise: order.customerLocationPrecise ??
-                                'Customer Yet to Verify Data',
-                            customerLocationLabel: order.customerLocationLabel ?? '',
-                            pickupLocation: order.organization?.address ?? 'Loading...',
-                            onStartDeliveryTap: () {
-                              orderController.acceptOrder(order.id!);
-                            },
-                            onCancelDeliveryTap: () {
-                              showDeclineDialog(
-                                onConfirm: () {
-                                  orderController.cancelOrder(order.id!);
-                                },
-
-                              );
-                            },
-                            businessName: order.organization?.name ?? 'Loading...',
-
-                          ),
-                        );
-                      }).toList(),
+                              },
+                            ),
+                          );
+                        }).toList(),
+                      ),
                     );
-                  },
-                ),
-              ],
+                  }),
+                ],
+              ),
             ),
           ),
         );
       }),
     );
   }
+
   void showDeclineDialog({required VoidCallback onConfirm}) {
     Get.dialog(
       Dialog(

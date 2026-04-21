@@ -6,6 +6,7 @@ import '../data/repo/auth_repo.dart';
 import '../helpers/global_loader_controller.dart';
 import '../model/user_model.dart';
 import '../routes/routes.dart';
+import '../widgets/snackbars.dart';
 
 class UserController extends GetxController {
   final AuthRepo authRepo;
@@ -25,6 +26,27 @@ class UserController extends GetxController {
   }
 
 
+  Future<void> toggleRiderActivity() async {
+    if (userModel.value == null) return;
+
+    bool previousState = userModel.value!.isActive ?? true;
+    userModel.value!.isActive = !previousState;
+    userModel.refresh();
+
+    Response response = await authRepo.toggleRiderActivity();
+
+    if (response.statusCode == 200 && response.body['success'] == true) {
+      userModel.value!.isActive = response.body['data']['isActive'];
+      userModel.refresh();
+
+      CustomSnackBar.success(message: response.body['message'] ?? "Status updated");
+    } else {
+      userModel.value!.isActive = previousState;
+      userModel.refresh();
+
+      CustomSnackBar.failure(message: response.body['message'] ?? "Failed to toggle status");
+    }
+  }
 
   ProfileStatus getProfileStatus() {
     User? user = userModel.value;
@@ -64,8 +86,6 @@ class UserController extends GetxController {
       return ProfileStatus(progress: 1.0, message: "Done", route: "");
     }
   }
-
-
 
   Future<void> getUserProfile() async {
     await Future.delayed(Duration.zero);

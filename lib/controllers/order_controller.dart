@@ -27,6 +27,8 @@ class OrderController extends GetxController {
   WebSocketChannel? _channel;
   StreamSubscription? _wsSub;
   StreamSubscription<Position>? _posSub;
+  var isFetchingOrders = false.obs;
+
 
   @override
   void onInit() {
@@ -350,8 +352,7 @@ class OrderController extends GetxController {
   }
 
   Future<void> getOrders() async {
-    loader.showLoader();
-
+    isFetchingOrders.value = true;
     Response response = await orderRepo.getOrders();
 
     if (response.statusCode == 200 && response.body['success'] == true) {
@@ -360,11 +361,12 @@ class OrderController extends GetxController {
       data.forEach((element) {
         _allOrders.add(OrderModel.fromJson(element));
       });
+      update();
     } else {
       print("Error fetching orders: ${response.statusText}");
     }
 
-    loader.hideLoader();
+    isFetchingOrders.value = false;
   }
 
   List<OrderModel> get pendingOrders {

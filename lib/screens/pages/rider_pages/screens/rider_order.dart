@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
+import 'package:skeletonizer/skeletonizer.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../controllers/order_controller.dart';
@@ -26,15 +27,25 @@ class _RiderOrderPageState extends State<RiderOrderPage> {
 
   OrderController orderController = Get.find<OrderController>();
 
+  // --- DUMMY DATA FOR SKELETONIZER ---
+  // Generates 3 fake orders to build the shimmer layout
+  final List<OrderModel> _dummyOrders = List.generate(
+    3,
+        (index) => OrderModel(
+      id: "dummy_id_$index",
+      orderNumber: "ORD999999999",
+      packageDescription: "Loading Package Description...",
+      status: "in_transit",
+    ),
+  );
+
   @override
   void initState() {
+    super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       orderController.getOrders();
     });
-    super.initState();
   }
-
-
 
   @override
   Widget build(BuildContext context) {
@@ -48,6 +59,7 @@ class _RiderOrderPageState extends State<RiderOrderPage> {
         ),
         child: Column(
           children: [
+            // --- HEADER ---
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -79,15 +91,17 @@ class _RiderOrderPageState extends State<RiderOrderPage> {
                     horizontal: Dimensions.width20,
                     vertical: Dimensions.height20,
                   ),
-                  decoration: BoxDecoration(
+                  decoration: const BoxDecoration(
                     color: AppColors.cardColor,
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(Iconsax.notification),
+                  child: const Icon(Iconsax.notification),
                 ),
               ],
             ),
             SizedBox(height: Dimensions.height20),
+
+            // --- TAB BAR ---
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -97,113 +111,100 @@ class _RiderOrderPageState extends State<RiderOrderPage> {
               ],
             ),
             SizedBox(height: Dimensions.height20),
+
+            // --- ORDERS LIST ---
             Expanded(
-              child: GetBuilder<OrderController>(
-                builder: (controller) {
-                  List<OrderModel> ordersToShow;
-                  if (_selectedTab == 0)
-                    ordersToShow = controller.confirmedOrders;
-                  else if (_selectedTab == 1)
-                    ordersToShow = controller.deliveredOrders;
-                  else
-                    ordersToShow = controller.cancelledOrders;
+              // ✅ Used Obx to listen to loading state reactively
+              child: Obx(() {
+                List<OrderModel> ordersToShow;
+                if (_selectedTab == 0) {
+                  ordersToShow = orderController.confirmedOrders;
+                } else if (_selectedTab == 1) {
+                  ordersToShow = orderController.deliveredOrders;
+                } else {
+                  ordersToShow = orderController.cancelledOrders;
+                }
 
-                  if (ordersToShow.isEmpty) {
-                    return Center(
-                      child: EmptyState(
-                        message: 'No Orders Found',
-                        imageAsset: 'empty-archive',
-                      ),
-                    );
-                  }
+                final bool isOrdersLoading = orderController.isFetchingOrders.value && orderController.pendingOrders.isEmpty;
+                // Use dummy data if loading, otherwise use actual data
+                final List<OrderModel> displayOrders = isOrdersLoading ? _dummyOrders : ordersToShow;
 
-                  return ListView.builder(
+                if (!isOrdersLoading && displayOrders.isEmpty) {
+                  return Center(
+                    child: EmptyState(
+                      message: 'No Orders Found',
+                      imageAsset: 'empty-archive',
+                    ),
+                  );
+                }
+
+                return Skeletonizer(
+                  enabled: isOrdersLoading,
+                  child: ListView.builder(
                     padding: EdgeInsets.zero,
-                    itemCount: ordersToShow.length,
+                    itemCount: displayOrders.length,
                     itemBuilder: (context, index) {
-                      var order = ordersToShow[index];
-                      bool locationIsSet =
-                          order.status == 'customer_location_set' ||
-                              (order.customerLocationLabel != null &&
-                                  order.customerLocationLabel!.isNotEmpty);
+                      var order = displayOrders[index];
 
                       return Padding(
                         padding: EdgeInsets.only(bottom: Dimensions.height15),
                         child: RiderOrderCard(
-                            orderId: order.orderNumber ?? "N/A",
-                            itemCount: order.packageDescription ?? "Package",
-                            onCallCustomerTap: () async {
-                              String? phone = order.rider?.phoneNumber;
-
-                              if (phone != null && phone.isNotEmpty) {
-                                // 1. Sanitize the number (Remove spaces, brackets, dashes)
-                                String cleanPhone = phone.replaceAll(
-                                  RegExp(r'[^\d+]'),
-                                  '',
-                                ); // Keeps only digits and +
-
-                                final Uri launchUri = Uri(
-                                  scheme: 'tel',
-                                  path: cleanPhone,
-                                );
-
-                                // 2. Attempt to launch
-                                try {
-                                  // mode: LaunchMode.platformDefault is usually better for dialers
-                                  if (!await launchUrl(
-                                    launchUri,
-                                    mode: LaunchMode.platformDefault,
-                                  )) {
-                                    throw 'Could not launch $launchUri';
-                                  }
-                                } catch (e) {
-                                  print("Error making call: $e");
-                                  // On Simulator, this will often trigger because there is no dialer
-                                  CustomSnackBar.failure(
-                                    message:
-                                    "Unable to make call on this device.",
-                                  );
-                                }
-                              } else {
-                                CustomSnackBar.failure(
-                                  message: "Phone number not available.",
-                                );
-                              }
-                            },
-                            status: order.status ?? '',
-                            customerName:
-                            order.customer?.name ??
-                                'Customer Yet to Verify Data',
-                            customerLocationLabel: order.customerLocationLabel ??
-                                'Customer Yet to Verify Data',
-                            customerLocationPrecise: order.customerLocationPrecise ??
-                                'Customer Yet to Verify Data',
-                            pickupLocation: order.organization?.address ?? 'loading...',
-                            onStartDeliveryTap: () {
-                              orderController.acceptOrder(order.id!);
-                            },
-                            onCancelDeliveryTap: () {
-                              orderController.cancelOrder(order.id!);
-                            },
+                          orderId: order.orderNumber ?? "N/A",
+                          itemCount: order.packageDescription ?? "Package",
+                          status: order.status ?? '',
+                          customerName: order.customer?.name ?? 'Customer Yet to Verify Data',
+                          customerLocationLabel: order.customerLocationLabel ?? 'Customer Yet to Verify Data',
+                          customerLocationPrecise: order.customerLocationPrecise ?? 'Customer Yet to Verify Data',
                           businessName: order.organization?.name ?? 'Loading...',
+                          pickupLocation: order.organization?.address ?? 'Loading...',
+
+                          onStartDeliveryTap: () {
+                            if (!isOrdersLoading) orderController.acceptOrder(order.id!);
+                          },
+                          onCancelDeliveryTap: () {
+                            if (!isOrdersLoading) orderController.cancelOrder(order.id!);
+                          },
                           onTrackOrderTap: () {
-                            Get.toNamed(
+                            if (!isOrdersLoading) {
+                              Get.toNamed(
                                 AppRoutes.riderTrackingScreen,
-                                arguments: order
-                            );
+                                arguments: order,
+                              );
+                            }
+                          },
+                          onCallCustomerTap: () async {
+                            if (isOrdersLoading) return;
+                            String? phone = order.rider?.phoneNumber;
+
+                            if (phone != null && phone.isNotEmpty) {
+                              String cleanPhone = phone.replaceAll(RegExp(r'[^\d+]'), '');
+                              final Uri launchUri = Uri(scheme: 'tel', path: cleanPhone);
+
+                              try {
+                                if (!await launchUrl(launchUri, mode: LaunchMode.platformDefault)) {
+                                  throw 'Could not launch $launchUri';
+                                }
+                              } catch (e) {
+                                print("Error making call: $e");
+                                CustomSnackBar.failure(message: "Unable to make call on this device.");
+                              }
+                            } else {
+                              CustomSnackBar.failure(message: "Phone number not available.");
+                            }
                           },
                         ),
                       );
                     },
-                  );
-                },
-              ),
+                  ),
+                );
+              }),
             ),
           ],
         ),
       ),
     );
   }
+
   Widget _buildTabButton(String text, int index) {
     bool isSelected = _selectedTab == index;
     return InkWell(
@@ -220,10 +221,7 @@ class _RiderOrderPageState extends State<RiderOrderPage> {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(Dimensions.radius10),
           color: isSelected ? AppColors.accentColor : AppColors.white,
-          // Active color logic
-          border: isSelected
-              ? null
-              : Border.all(color: Colors.grey.withOpacity(0.3)),
+          border: isSelected ? null : Border.all(color: Colors.grey.withOpacity(0.3)),
         ),
         child: Text(
           text,
@@ -235,5 +233,4 @@ class _RiderOrderPageState extends State<RiderOrderPage> {
       ),
     );
   }
-
 }

@@ -9,6 +9,11 @@ class AuthRepo extends GetConnect {
 
   AuthRepo({required this.apiClient});
 
+  //RIDER SPECIFIC
+
+  Future<Response> toggleRiderActivity() async {
+    return await apiClient.postData(AppConstants.TOGGLE_RIDER_AVAILABILITY, {});
+  }
 
 
   Future<Response> updateProfile(Map<String, dynamic> body) async {

@@ -9,6 +9,7 @@ import 'package:otonav/controllers/user_controller.dart';
 import 'package:otonav/data/api/api_client.dart';
 import 'package:otonav/data/repo/auth_repo.dart';
 import 'package:otonav/screens/pages/rider_pages/screens/rider_home_page.dart';
+import 'package:otonav/screens/pages/rider_pages/screens/rider_profile_page.dart';
 import 'package:otonav/screens/pages/user_pages/screens/orders.dart';
 import 'package:otonav/screens/pages/user_pages/screens/profile.dart';
 import 'package:otonav/widgets/snackbars.dart';
@@ -46,11 +47,7 @@ class AppController extends GetxController {
     CustomerProfilePage(),
   ];
 
-  final List<Widget> riderPages = [
-    RiderHomePage(),
-    RiderOrderPage(),
-    CustomerProfilePage(),
-  ];
+  final List<Widget> riderPages = [RiderHomePage(), RiderOrderPage(), RiderProfilePage()];
 
   @override
   void onInit() {
@@ -121,17 +118,12 @@ class AppController extends GetxController {
   }
 
   Future<void> _navigateHome(String? role) async {
-
     saveDeviceToken();
     if (role == 'rider') {
       Get.offAllNamed(AppRoutes.riderHomeScreen);
     } else {
-      if (role == 'customer')
-      Get.offAllNamed(AppRoutes.customerHomeScreen);
+      if (role == 'customer') Get.offAllNamed(AppRoutes.customerHomeScreen);
     }
-    Future.delayed(const Duration(milliseconds: 500), () {
-      CustomSnackBar.showToast(message: 'User does not exist');
-    });
     return;
   }
 
@@ -193,7 +185,6 @@ class AppController extends GetxController {
       print("❌ Error saving device token: $e");
     }
   }
-
 
   Future<void> checkFirstTimeUse() async {
     final prefs = appRepo.sharedPreferences;

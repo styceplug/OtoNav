@@ -7,6 +7,3 @@ class GlobalLoaderController extends GetxController {
   void hideLoader() => isLoading.value = false;
 }
 
-
-
-final loader = Get.find<GlobalLoaderController>();

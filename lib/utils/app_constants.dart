@@ -19,6 +19,9 @@ class AppConstants {
   static const String PUT_PROFILE_UPDATE = '/api/auth/profile';
   static const String REFRESH_TOKEN = '/api/auth/refresh-token';
   static const String POST_FCM_TOKEN = 'api/users/fcm-token';
+  static const String TOGGLE_RIDER_AVAILABILITY = '/api/riders/toggle-activity';
+
+
 
   static const String GET_ORDERS_LIST = '/api/orders';
 
