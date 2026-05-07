@@ -125,11 +125,12 @@ class _CustomerTrackingPageState extends State<CustomerTrackingPage> with Ticker
   }
 
   Future<void> _loadDestination(OrderModel order) async {
-    final address = order.customerLocationPrecise ?? "";
-    if (address.isEmpty) return;
+    // ✅ Use the direct coordinates from the model!
+    if (order.customerLocationLat == null || order.customerLocationLng == null) return;
 
-    final dest = await _osmHelper.getCoordinatesFromAddress(address);
-    if (!mounted || dest == null) return;
+    final dest = LatLng(order.customerLocationLat!, order.customerLocationLng!);
+
+    if (!mounted) return;
 
     setState(() {
       _destinationLatLng = dest;
@@ -379,3 +380,4 @@ class _CustomerTrackingPageState extends State<CustomerTrackingPage> with Ticker
     );
   }
 }
+

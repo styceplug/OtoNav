@@ -10,8 +10,10 @@ class OrderModel {
   String? riderId;
   String? riderCurrentLocation;
   String? customerLocationLabel;
-  String? customerLocationPrecise;
+  double? customerLocationLat;
+  double? customerLocationLng;
   String? status;
+  String? deliveryPin;
 
   // Dates
   String? assignedAt;
@@ -43,8 +45,10 @@ class OrderModel {
     this.riderId,
     this.riderCurrentLocation,
     this.customerLocationLabel,
-    this.customerLocationPrecise,
+    this.customerLocationLat,
+    this.customerLocationLng,
     this.status,
+    this.deliveryPin,
     this.assignedAt,
     this.riderAcceptedAt,
     this.customerLocationSetAt,
@@ -71,9 +75,9 @@ class OrderModel {
     riderId = json['riderId'];
     riderCurrentLocation = json['riderCurrentLocation'];
     customerLocationLabel = json['customerLocationLabel'];
-    customerLocationPrecise = json['customerLocationPrecise'];
-    status = json['status'];
-
+    customerLocationLat = json['customerLocationLat'] != null ? double.tryParse(json['customerLocationLat'].toString()) : null;
+    customerLocationLng = json['customerLocationLng'] != null ? double.tryParse(json['customerLocationLng'].toString()) : null;    status = json['status'];
+    deliveryPin = json['deliveryPin']?.toString();
     // Dates
     assignedAt = json['assignedAt'];
     riderAcceptedAt = json['riderAcceptedAt'];
@@ -160,5 +164,34 @@ class OwnerModel {
     id = json['id'];
     name = json['name'];
     email = json['email'];
+  }
+}
+
+class WaitlistModel {
+  String? id;
+  String? status;
+  DateTime? expiresAt;
+  DateTime? createdAt;
+  OrderModel? order;
+
+  WaitlistModel({this.id, this.status, this.expiresAt, this.createdAt, this.order});
+
+  WaitlistModel.fromJson(Map<String, dynamic> json) {
+    id = json['id']?.toString();
+    status = json['status']?.toString();
+    expiresAt = json['expiresAt'] != null ? DateTime.tryParse(json['expiresAt']) : null;
+    createdAt = json['createdAt'] != null ? DateTime.tryParse(json['createdAt']) : null;
+
+    if (json['order'] != null) {
+      // ✅ THE FIX: Merge the root-level organization and customer into the order JSON
+      // so OrderModel can parse them properly!
+      Map<String, dynamic> orderJson = Map<String, dynamic>.from(json['order']);
+      orderJson['organization'] = json['organization'];
+      orderJson['customer'] = json['customer'];
+
+      order = OrderModel.fromJson(orderJson);
+    } else {
+      order = OrderModel.fromJson(json);
+    }
   }
 }

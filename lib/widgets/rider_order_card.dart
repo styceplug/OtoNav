@@ -9,19 +9,33 @@ import '../utils/colors.dart';
 import '../utils/dimensions.dart';
 import 'custom_button.dart';
 
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
+import 'package:iconsax/iconsax.dart';
+import 'package:otonav/utils/colors.dart';
+import 'package:otonav/utils/dimensions.dart';
+import 'package:otonav/widgets/custom_button.dart';
+
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
+import 'package:iconsax/iconsax.dart';
+import 'package:otonav/utils/colors.dart';
+import 'package:otonav/utils/dimensions.dart';
+import 'package:otonav/widgets/custom_button.dart';
+
 class RiderOrderCard extends StatefulWidget {
   final String orderId;
   final String itemCount;
   final String customerName;
-  final String customerLocationPrecise;
-  final String customerLocationLabel;
+  final String? customerLocationPrecise;
+  final String? customerLocationLabel;
   final String pickupLocation;
+  final String status;
+  final String businessName;
   final VoidCallback onCallCustomerTap;
   final VoidCallback onStartDeliveryTap;
   final VoidCallback onCancelDeliveryTap;
   final VoidCallback? onTrackOrderTap;
-  final String status;
-  final String businessName;
 
   const RiderOrderCard({
     Key? key,
@@ -29,13 +43,13 @@ class RiderOrderCard extends StatefulWidget {
     required this.itemCount,
     required this.customerName,
     required this.status,
-    required this.customerLocationPrecise,
-    required this.customerLocationLabel,
+    this.customerLocationPrecise,
+    this.customerLocationLabel,
     required this.pickupLocation,
+    required this.businessName,
     required this.onCallCustomerTap,
     required this.onStartDeliveryTap,
     required this.onCancelDeliveryTap,
-    required this.businessName,
     this.onTrackOrderTap,
   }) : super(key: key);
 
@@ -43,243 +57,191 @@ class RiderOrderCard extends StatefulWidget {
   State<RiderOrderCard> createState() => _RiderOrderCardState();
 }
 
-class _RiderOrderCardState extends State<RiderOrderCard>
-    with SingleTickerProviderStateMixin {
+class _RiderOrderCardState extends State<RiderOrderCard> with SingleTickerProviderStateMixin {
   bool _isExpanded = false;
 
-  // Helper to check if location is valid
-  bool get _isLocationSet {
-    return widget.customerLocationPrecise.isNotEmpty &&
-        widget.customerLocationPrecise != 'Customer Yet to Verify Data' &&
-        widget.customerLocationPrecise != 'null';
-  }
+  bool get _isLocationSet =>
+      widget.customerLocationLabel != null &&
+          widget.customerLocationLabel!.isNotEmpty &&
+          widget.customerLocationLabel != 'Customer Yet to Verify Data' &&
+          widget.customerLocationLabel != 'null';
+
+  bool get _isCompleted =>
+      widget.status.toLowerCase() == 'delivered' ||
+          widget.status.toLowerCase() == 'completed';
+
+  bool get _isCancelled =>
+      widget.status.toLowerCase() == 'cancelled' ||
+          widget.status.toLowerCase() == 'rejected';
+
+  bool get _isActive =>
+      widget.status.toLowerCase() == 'confirmed' ||
+          widget.status.toLowerCase() == 'rider_accepted' ||
+          widget.status.toLowerCase() == 'package_picked_up' ||
+          widget.status.toLowerCase() == 'in_transit' ||
+          widget.status.toLowerCase() == 'arrived_at_location';
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: Dimensions.width20,
-        vertical: Dimensions.height20,
-      ),
+      padding: EdgeInsets.all(Dimensions.width20),
       decoration: BoxDecoration(
         color: AppColors.white,
         borderRadius: BorderRadius.circular(Dimensions.radius20),
+        border: Border.all(color: Colors.grey.withOpacity(0.1)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
+          )
+        ],
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          // --- HEADER ---
           InkWell(
-            onTap: () {
-              setState(() {
-                _isExpanded = !_isExpanded;
-              });
-            },
+            onTap: () => setState(() => _isExpanded = !_isExpanded),
             child: Row(
               children: [
                 Container(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: Dimensions.width10,
-                    vertical: Dimensions.height10,
-                  ),
+                  padding: EdgeInsets.all(Dimensions.width10),
                   decoration: BoxDecoration(
-                    color: AppColors.cardColor,
+                    color: _isCancelled
+                        ? Colors.red.withOpacity(0.1)
+                        : (_isCompleted ? Colors.green.withOpacity(0.1) : Colors.blue.withOpacity(0.1)),
                     borderRadius: BorderRadius.circular(Dimensions.radius10),
                   ),
-                  child: Icon(Iconsax.box),
+                  child: Icon(
+                    _isCompleted ? Iconsax.tick_circle : (_isCancelled ? Iconsax.close_circle : Iconsax.box),
+                    color: _isCancelled ? Colors.red : (_isCompleted ? Colors.green : Colors.blue),
+                  ),
                 ),
-                SizedBox(width: Dimensions.width20),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      widget.orderId,
-                      style: TextStyle(
-                        fontSize: Dimensions.font14,
-                        fontWeight: FontWeight.w500,
+                SizedBox(width: Dimensions.width15),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        widget.customerName,
+                        style: TextStyle(fontSize: Dimensions.font16, fontWeight: FontWeight.bold),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                    ),
-                    Text(
-                      widget.itemCount,
-                      style: TextStyle(
-                        fontSize: Dimensions.font13,
-                        fontWeight: FontWeight.w300,
+                      Text(
+                        widget.orderId,
+                        style: TextStyle(fontSize: Dimensions.font13, color: Colors.grey),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-                Spacer(),
+
+                // ✅ NEW: Status Badge
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: _isCompleted ? Colors.green.withOpacity(0.1) : (_isCancelled ? Colors.red.withOpacity(0.1) : (_isActive ? Colors.blue.withOpacity(0.1) : Colors.orange.withOpacity(0.1))),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    _isCompleted ? 'Delivered' : (_isCancelled ? 'Cancelled' : (_isActive ? 'Active' : 'Pending')),
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: _isCompleted ? Colors.green : (_isCancelled ? Colors.red : (_isActive ? Colors.blue : Colors.orange)),
+                    ),
+                  ),
+                ),
+                SizedBox(width: 8),
                 AnimatedRotation(
                   turns: _isExpanded ? 0.5 : 0.0,
                   duration: const Duration(milliseconds: 200),
-                  child: Icon(Icons.arrow_drop_down),
+                  child: const Icon(Icons.keyboard_arrow_down, color: Colors.grey),
                 ),
               ],
             ),
           ),
+
+          // --- EXPANDABLE CONTENT ---
           AnimatedCrossFade(
             firstChild: Container(height: 0),
             secondChild: Column(
               children: [
-                Divider(color: AppColors.grey4),
-                SizedBox(height: Dimensions.height10),
-                // Customer Row
-                Row(
-                  children: [
-                    Container(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: Dimensions.width10,
-                        vertical: Dimensions.height10,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.accentColor,
-                        borderRadius: BorderRadius.circular(
-                          Dimensions.radius15,
-                        ),
-                      ),
-                      child: Icon(
-                        Iconsax.profile_2user,
-                        color: AppColors.white,
-                      ),
-                    ),
-                    SizedBox(width: Dimensions.width20),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Order Receiver',
-                          style: TextStyle(
-                            fontSize: Dimensions.font14,
-                            fontWeight: FontWeight.w300,
-                          ),
-                        ),
-                        Text(
-                          widget.customerName,
-                          style: TextStyle(
-                            fontSize: Dimensions.font15,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                    Spacer(),
-                    InkWell(
-                      onTap: widget.onCallCustomerTap,
-                      child: Icon(Iconsax.call_calling),
-                    ),
-                  ],
-                ),
-                SizedBox(height: Dimensions.height20),
+                SizedBox(height: Dimensions.height15),
+                Divider(color: Colors.grey.withOpacity(0.2)),
+                SizedBox(height: Dimensions.height15),
+
+                // ✅ NEW: Premium Timeline Locations Block
                 Container(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: Dimensions.width10,
-                    vertical: Dimensions.height10,
-                  ),
+                  padding: EdgeInsets.all(Dimensions.width15),
                   decoration: BoxDecoration(
-                    color: AppColors.cardColor,
-                    borderRadius: BorderRadius.circular(Dimensions.radius20),
+                    color: AppColors.backgroundColor,
+                    borderRadius: BorderRadius.circular(Dimensions.radius15),
                   ),
-                  child: Column(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // DELIVERY LOCATION SECTION
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      // Timeline Graphics
+                      Column(
                         children: [
-                          Icon(
-                            CupertinoIcons.location_circle_fill,
-                            color: AppColors.primaryColor,
-                            size: Dimensions.iconSize30 * 1.2,
+                          const SizedBox(height: 5),
+                          const Icon(Icons.circle, color: Colors.blue, size: 14),
+                          Container(
+                            width: 2,
+                            height: 40,
+                            margin: const EdgeInsets.symmetric(vertical: 4),
+                            color: Colors.grey.withOpacity(0.3),
                           ),
-                          SizedBox(width: Dimensions.width15),
-                          Expanded(
-                            child: Column(
+                          Icon(
+                            Icons.location_on,
+                            color: _isLocationSet ? Colors.green : Colors.orange,
+                            size: 18,
+                          ),
+                        ],
+                      ),
+                      SizedBox(width: Dimensions.width15),
+                      // Location Texts
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Pickup
+                            Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisAlignment: MainAxisAlignment.spaceAround,
                               children: [
+                                const Text("Pickup", style: TextStyle(fontSize: 12, color: Colors.grey)),
                                 Text(
-                                  'Delivery Location',
-                                  style: TextStyle(
-                                    fontSize: Dimensions.font16,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                                // LOGIC: If location is set, show it. Else show waiting text.
-                                _isLocationSet
-                                    ? Column(
-                                  crossAxisAlignment:
-                                  CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      widget.customerLocationPrecise,
-                                      overflow: TextOverflow.clip,
-                                      style: TextStyle(
-                                        fontSize: Dimensions.font14,
-                                        fontWeight: FontWeight.w300,
-                                      ),
-                                    ),
-                                    Text(
-                                      widget.customerLocationLabel,
-                                      style: TextStyle(
-                                        fontSize: Dimensions.font13,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  ],
-                                )
-                                    : Text(
-                                  "Waiting for location...",
-                                  style: TextStyle(
-                                    fontSize: Dimensions.font14,
-                                    fontWeight: FontWeight.w400,
-                                    color: Colors.orange,
-                                    fontStyle: FontStyle.italic,
-                                  ),
+                                  widget.pickupLocation,
+                                  style: TextStyle(fontSize: Dimensions.font14, fontWeight: FontWeight.w600),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ],
                             ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: Dimensions.height15),
-                      // PICKUP LOCATION SECTION
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Icon(
-                            CupertinoIcons.location_circle_fill,
-                            color: AppColors.primaryColor,
-                            size: Dimensions.iconSize30 * 1.2,
-                          ),
-                          SizedBox(width: Dimensions.width15),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisAlignment: MainAxisAlignment.spaceAround,
-                            children: [
-                              Text(
-                                'Pick-up Location',
-                                style: TextStyle(
-                                  fontSize: Dimensions.font16,
-                                  fontWeight: FontWeight.w500,
+                            const SizedBox(height: 20),
+                            // Dropoff
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text("Dropoff", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                                Text(
+                                  _isLocationSet
+                                      ? widget.customerLocationLabel!
+                                      : "Waiting for customer location...",
+                                  style: TextStyle(
+                                    fontSize: Dimensions.font14,
+                                    fontWeight: _isLocationSet ? FontWeight.w600 : FontWeight.normal,
+                                    fontStyle: _isLocationSet ? FontStyle.normal : FontStyle.italic,
+                                    color: _isLocationSet ? Colors.black : Colors.orange,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
-                              ),
-                              Text(
-                                widget.pickupLocation,
-                                overflow: TextOverflow.clip,
-                                style: TextStyle(
-                                  fontSize: Dimensions.font14,
-                                  fontWeight: FontWeight.w300,
-                                ),
-                              ),
-                              Text(
-                                widget.businessName,
-                                overflow: TextOverflow.clip,
-                                style: TextStyle(
-                                  fontSize: Dimensions.font13,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
@@ -287,118 +249,87 @@ class _RiderOrderCardState extends State<RiderOrderCard>
                 SizedBox(height: Dimensions.height20),
 
                 // --- ACTION BUTTONS ---
-                if (widget.status == 'pending' ||
-                    widget.status == 'customer_location_set') ...[
-                  // IF LOCATION IS NOT SET: Show Waiting Indicator
-                  if (!_isLocationSet) ...[
-                    Container(
-                      width: double.infinity,
-                      padding: EdgeInsets.symmetric(
-                        vertical: Dimensions.height15,
-                        horizontal: Dimensions.width20,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.orange.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(
-                            Dimensions.radius15),
-                        border: Border.all(
-                            color: Colors.orange.withOpacity(0.5)),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          SizedBox(
-                            width: 15,
-                            height: 15,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.orange,
-                            ),
-                          ),
-                          SizedBox(width: Dimensions.width10),
-                          Flexible(
-                            child: Text(
-                              "Waiting for customer to set location",
-                              style: TextStyle(
-                                color: Colors.orange[800],
-                                fontWeight: FontWeight.w600,
-                                fontSize: Dimensions.font14,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
+
+                // CASE A: NOT SET YET -> Only allow Cancel/Decline
+                if (!_isLocationSet && widget.status == 'pending') ...[
+                  Container(
+                    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 15),
+                    decoration: BoxDecoration(
+                        color: Colors.orange.withOpacity(0.05),
+                        border: Border.all(color: Colors.orange.withOpacity(0.3)),
+                        borderRadius: BorderRadius.circular(10)
                     ),
-                    SizedBox(height: Dimensions.height10),
-                    // Optional: You can still allow them to cancel if they wait too long
-                    Align(
-                      alignment: Alignment.center,
-                      child: TextButton(
-                        onPressed: () {
-                          widget.onCancelDeliveryTap();
-                        },
-                        child: Text(
-                          "Decline Order",
-                          style: TextStyle(color: Colors.red),
+                    child: Row(
+                      children: [
+                        const SizedBox(height: 15, width: 15, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.orange)),
+                        const SizedBox(width: 10),
+                        const Expanded(child: Text("Waiting for dropoff pin...", style: TextStyle(fontSize: 13, color: Colors.orange, fontWeight: FontWeight.w500))),
+                        TextButton(
+                          onPressed: widget.onCancelDeliveryTap,
+                          style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: const Size(0, 0)),
+                          child: const Text("Decline", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                        ),
+                      ],
+                    ),
+                  ),
+                ]
+
+                // CASE B: READY TO START -> Location Set
+                else if (widget.status == 'customer_location_set') ...[
+                  Row(
+                    children: [
+                      InkWell(
+                        onTap: widget.onCancelDeliveryTap,
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                              color: Colors.red.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(10)
+                          ),
+                          child: const Icon(Iconsax.close_circle, color: Colors.red),
                         ),
                       ),
-                    )
-                  ]
-                  // IF LOCATION IS SET: Show Normal Buttons
-                  else ...[
-                    Row(
-                      children: [
-                        CustomButton(
-                          text: 'Cancel',
-                          onPressed: () {
-                            print('tapped');
-                            widget.onCancelDeliveryTap();
-                          },
-                          padding: EdgeInsets.symmetric(
-                            vertical: Dimensions.height10,
-                            horizontal: Dimensions.width20,
-                          ),
+                      SizedBox(width: Dimensions.width15),
+                      Expanded(
+                        child: CustomButton(
+                          text: 'Start Delivery',
+                          onPressed: widget.onStartDeliveryTap,
                           backgroundColor: AppColors.primaryColor,
                         ),
-                        SizedBox(width: Dimensions.width20),
+                      ),
+                    ],
+                  ),
+                ]
+
+                // CASE C: ACTIVE IN TRANSIT
+                else if (widget.status != 'delivered' && widget.status != 'cancelled' && widget.status != 'pending') ...[
+                    Row(
+                      children: [
+                        InkWell(
+                          onTap: widget.onCallCustomerTap,
+                          child: Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                                color: Colors.green.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(10)
+                            ),
+                            child: const Icon(Iconsax.call, color: Colors.green),
+                          ),
+                        ),
+                        SizedBox(width: Dimensions.width15),
                         Expanded(
                           child: CustomButton(
-                            text: 'Start Delivery',
-                            onPressed: () {
-                              widget.onStartDeliveryTap();
-                            },
-                            padding: EdgeInsets.symmetric(
-                              vertical: Dimensions.height10,
-                            ),
+                            text: 'Head to Map',
+                            onPressed: () => widget.onTrackOrderTap?.call(),
+                            backgroundColor: Colors.blue,
                           ),
                         ),
                       ],
                     ),
                   ],
-                ] else if (widget.status == 'confirmed' ||
-                    widget.status == 'rider_accepted' ||
-                    widget.status == 'package_picked_up' ||
-                    widget.status == 'in_transit' ||
-                    widget.status == 'arrived_at_location') ...[
-                  CustomButton(
-                    text: 'Head to Map',
-                    onPressed: () => widget.onTrackOrderTap?.call(),
-                  ),
-                ],
-                if (widget.status == 'cancelled') ...[
-                  Text(
-                    'No Actions required: Order Cancelled',
-                    style: TextStyle(
-                      color: AppColors.error,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
               ],
             ),
-            crossFadeState: _isExpanded
-                ? CrossFadeState.showSecond
-                : CrossFadeState.showFirst,
+            crossFadeState: _isExpanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
             duration: const Duration(milliseconds: 300),
           ),
         ],

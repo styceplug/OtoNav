@@ -9,6 +9,7 @@ import 'package:otonav/utils/app_constants.dart';
 import 'package:otonav/utils/dimensions.dart';
 
 import '../../../../model/user_model.dart';
+import '../../../../routes/routes.dart';
 import '../../../../utils/colors.dart';
 
 class CustomerProfilePage extends StatefulWidget {
@@ -70,17 +71,22 @@ class _CustomerProfilePageState extends State<CustomerProfilePage> {
                         ],
                       ),
                     ),
-                    Container(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: Dimensions.width20,
-                        vertical: Dimensions.height20,
+                    InkWell(
+                      onTap: (){
+                        Get.toNamed(AppRoutes.notificationScreen);
+                      },
+                      child: Container(
+                        padding: EdgeInsets.all(Dimensions.width15),
+                        decoration: const BoxDecoration(
+                          color: AppColors.cardColor,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Iconsax.notification,
+                        ),
                       ),
-                      decoration: BoxDecoration(
-                        color: AppColors.cardColor,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(Iconsax.notification),
                     ),
+
                   ],
                 ),
                 SizedBox(height: Dimensions.height50),

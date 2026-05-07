@@ -11,6 +11,8 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'dart:math' as math;
 
+import '../../../widgets/snackbars.dart';
+
 
 class RiderTrackingPage extends StatefulWidget {
   final String orderId;
@@ -19,7 +21,6 @@ class RiderTrackingPage extends StatefulWidget {
   @override
   State<RiderTrackingPage> createState() => _RiderTrackingPageState();
 }
-
 
 class _RiderTrackingPageState extends State<RiderTrackingPage> with TickerProviderStateMixin {
   final MapController _mapController = MapController();
@@ -79,16 +80,18 @@ class _RiderTrackingPageState extends State<RiderTrackingPage> with TickerProvid
     super.dispose();
   }
 
-  // --- External Navigation Launcher ---
   Future<void> _openInNativeMaps() async {
     if (_destinationLatLng == null) return;
 
-    // Universal URL that opens Google Maps app (or Apple Maps on iOS if Google isn't installed)
+    // ✅ The official Google Maps universal deep link format
     final url = 'https://www.google.com/maps/dir/?api=1&destination=${_destinationLatLng!.latitude},${_destinationLatLng!.longitude}&travelmode=driving';
 
     try {
       if (await canLaunchUrlString(url)) {
-        await launchUrlString(url, mode: LaunchMode.externalApplication);
+        await launchUrlString(
+          url,
+          mode: LaunchMode.externalApplication, // Forces it out of your app
+        );
       } else {
         Get.snackbar("Error", "Could not open map application");
       }
@@ -142,10 +145,22 @@ class _RiderTrackingPageState extends State<RiderTrackingPage> with TickerProvid
   }
 
   Future<void> _loadDestination(OrderModel order) async {
-    final address = order.customerLocationPrecise ?? "";
-    if (address.isEmpty) return;
+    final status = order.status ?? '';
+    LatLng? dest;
 
-    final dest = await _osmHelper.getCoordinatesFromAddress(address);
+    // 1. Determine Target (Vendor vs Customer)
+    if (status == 'confirmed' || status == 'rider_accepted') {
+      final vendorAddress = order.organization?.address ?? "";
+      if (vendorAddress.isNotEmpty) {
+        dest = await _osmHelper.getCoordinatesFromAddress(vendorAddress);
+      }
+    } else {
+      // ✅ Instantly route using the Customer's precise GPS!
+      if (order.customerLocationLat != null && order.customerLocationLng != null) {
+        dest = LatLng(order.customerLocationLat!, order.customerLocationLng!);
+      }
+    }
+
     if (!mounted || dest == null) return;
 
     setState(() {
@@ -186,6 +201,86 @@ class _RiderTrackingPageState extends State<RiderTrackingPage> with TickerProvid
     });
   }
 
+  void _showPinVerificationSheet(String orderId) {
+    final TextEditingController pinController = TextEditingController();
+
+    Get.bottomSheet(
+      Container(
+        padding: const EdgeInsets.all(24),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40, height: 5,
+              decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(10)),
+            ),
+            const SizedBox(height: 24),
+            const Icon(Icons.security, size: 48, color: Colors.blueAccent),
+            const SizedBox(height: 16),
+            const Text(
+              "Verify Delivery",
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              "Ask the customer for their 4-digit Delivery PIN to complete this order.",
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.grey, fontSize: 14),
+            ),
+            const SizedBox(height: 24),
+
+            // PIN Input Field
+            TextField(
+              controller: pinController,
+              keyboardType: TextInputType.number,
+              textAlign: TextAlign.center,
+              maxLength: 4,
+              style: const TextStyle(fontSize: 24, letterSpacing: 8, fontWeight: FontWeight.bold),
+              decoration: InputDecoration(
+                hintText: "0000",
+                counterText: "", // Hide the character counter
+                filled: true,
+                fillColor: Colors.grey[100],
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(15),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // Confirm Button
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primaryColor,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                ),
+                onPressed: () {
+                  if (pinController.text.length == 4) {
+                    Get.back();
+                    Get.find<OrderController>().confirmDelivery(orderId, pinController.text);
+                  } else {
+                    CustomSnackBar.failure(message: "Please enter a valid 4-digit PIN");
+                  }
+                },
+                child: const Text("Confirm & Complete", style: TextStyle(fontSize: 16, color: Colors.white)),
+              ),
+            ),
+            const SizedBox(height: 10),
+          ],
+        ),
+      ),
+      isScrollControlled: true,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final controller = Get.find<OrderController>();
@@ -208,15 +303,15 @@ class _RiderTrackingPageState extends State<RiderTrackingPage> with TickerProvid
           } else if (status == 'package_picked_up') {
             buttonText = 'Start Trip';
             titleText = 'Delivery Address';
-            addressText = order.customerLocationPrecise ?? "";
+            addressText = order.customerLocationLabel ?? "";
           } else if (status == 'in_transit') {
             buttonText = 'I have arrived';
             titleText = 'Delivery Address';
-            addressText = order.customerLocationPrecise ?? "";
+            addressText = order.customerLocationLabel ?? "";
           } else if (status == 'arrived_at_location') {
             buttonText = 'Mark as Delivered';
             titleText = 'Delivery Address';
-            addressText = order.customerLocationPrecise ?? "";
+            addressText = order.customerLocationLabel ?? "";
           }
 
           final initialCenter = _interpolatedPos ?? ctrl.currentRiderLatLng.value ?? const LatLng(9.0820, 8.6753);
@@ -354,13 +449,17 @@ class _RiderTrackingPageState extends State<RiderTrackingPage> with TickerProvid
                       const SizedBox(height: 15),
                       SizedBox(
                         width: double.infinity,
+                        height: 55,
                         child: ElevatedButton(
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.accentColor,
-                            foregroundColor: Colors.white,
+                            backgroundColor: status == 'arrived_at_location' ? Colors.green : AppColors.primaryColor,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                            elevation: 0,
                           ),
                           onPressed: () async {
                             final id = order.id!;
+
+                            // Map the button tap to the correct API call
                             if (status == 'confirmed' || status == 'rider_accepted') {
                               await ctrl.markPackagePickedUp(id);
                             } else if (status == 'package_picked_up') {
@@ -368,10 +467,18 @@ class _RiderTrackingPageState extends State<RiderTrackingPage> with TickerProvid
                             } else if (status == 'in_transit') {
                               await ctrl.markArrived(id);
                             } else if (status == 'arrived_at_location') {
-                              await ctrl.confirmDelivery(id);
+                              // ✅ FIRE THE PIN VERIFICATION UI
+                              _showPinVerificationSheet(id);
                             }
                           },
-                          child: Text(buttonText),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              if (status == 'arrived_at_location') const Icon(Icons.security, color: Colors.white, size: 20),
+                              if (status == 'arrived_at_location') const SizedBox(width: 8),
+                              Text(buttonText, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white)),
+                            ],
+                          ),
                         ),
                       ),
                     ],

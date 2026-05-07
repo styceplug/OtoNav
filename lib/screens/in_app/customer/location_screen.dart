@@ -18,8 +18,6 @@ import '../../../utils/app_constants.dart';
 import '../../../utils/colors.dart';
 import '../../../widgets/snackbars.dart';
 
-
-
 class LocationScreen extends StatefulWidget {
   const LocationScreen({super.key});
 
@@ -42,10 +40,10 @@ class _LocationScreenState extends State<LocationScreen> {
   final LatLng _initialPosition = const LatLng(6.5244, 3.3792);
 
   final User _dummyUser = User(
-      locations: [
-        LocationModel(label: "Home", preciseLocation: "Loading saved address..."),
-        LocationModel(label: "Office", preciseLocation: "Loading saved address..."),
-      ]
+    locations: [
+      LocationModel(label: "Home", lat: 0.00, lng: 0.00),
+      LocationModel(label: "Office", lat: 0.00, lng: 0.00),
+    ],
   );
 
   final List<Map<String, dynamic>> locationTypes = [
@@ -76,7 +74,8 @@ class _LocationScreenState extends State<LocationScreen> {
 
   IconData _getLocationIcon(String label) {
     var match = locationTypes.firstWhere(
-          (element) => element['name'].toString().toLowerCase() == label.toLowerCase(),
+      (element) =>
+          element['name'].toString().toLowerCase() == label.toLowerCase(),
       orElse: () => {'icon': Icons.location_on_rounded},
     );
     return match['icon'] as IconData;
@@ -88,25 +87,50 @@ class _LocationScreenState extends State<LocationScreen> {
         padding: EdgeInsets.all(Dimensions.width20),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(Dimensions.radius20)),
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(Dimensions.radius20),
+          ),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 40, height: 5,
-              decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(10)),
+              width: 40,
+              height: 5,
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
             SizedBox(height: Dimensions.height20),
             Container(
               padding: const EdgeInsets.all(15),
-              decoration: BoxDecoration(color: Colors.redAccent.withOpacity(0.1), shape: BoxShape.circle),
-              child: const Icon(Iconsax.trash, color: Colors.redAccent, size: 35),
+              decoration: BoxDecoration(
+                color: Colors.redAccent.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Iconsax.trash,
+                color: Colors.redAccent,
+                size: 35,
+              ),
             ),
             SizedBox(height: Dimensions.height15),
-            Text("Delete '$label'?", style: TextStyle(fontSize: Dimensions.font20, fontWeight: FontWeight.bold)),
+            Text(
+              "Delete '$label'?",
+              style: TextStyle(
+                fontSize: Dimensions.font20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
             SizedBox(height: Dimensions.height10),
-            Text("This action is permanent and cannot be undone.", style: TextStyle(color: AppColors.grey5, fontSize: Dimensions.font14)),
+            Text(
+              "This action is permanent and cannot be undone.",
+              style: TextStyle(
+                color: AppColors.grey5,
+                fontSize: Dimensions.font14,
+              ),
+            ),
             SizedBox(height: Dimensions.height30),
             Row(
               children: [
@@ -114,12 +138,24 @@ class _LocationScreenState extends State<LocationScreen> {
                   child: InkWell(
                     onTap: () => Get.back(),
                     child: Container(
-                      padding: EdgeInsets.symmetric(vertical: Dimensions.height15),
+                      padding: EdgeInsets.symmetric(
+                        vertical: Dimensions.height15,
+                      ),
                       decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(Dimensions.radius10),
+                        borderRadius: BorderRadius.circular(
+                          Dimensions.radius10,
+                        ),
                         border: Border.all(color: Colors.grey[300]!),
                       ),
-                      child: Center(child: Text("Cancel", style: TextStyle(fontSize: Dimensions.font15, fontWeight: FontWeight.w500))),
+                      child: Center(
+                        child: Text(
+                          "Cancel",
+                          style: TextStyle(
+                            fontSize: Dimensions.font15,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -128,20 +164,35 @@ class _LocationScreenState extends State<LocationScreen> {
                   child: InkWell(
                     onTap: () {
                       Get.back(); // Close bottom sheet
-                      authController.deleteSavedLocation(label); // Trigger deletion
+                      authController.deleteSavedLocation(
+                        label,
+                      ); // Trigger deletion
                     },
                     child: Container(
-                      padding: EdgeInsets.symmetric(vertical: Dimensions.height15),
+                      padding: EdgeInsets.symmetric(
+                        vertical: Dimensions.height15,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.redAccent,
-                        borderRadius: BorderRadius.circular(Dimensions.radius10),
+                        borderRadius: BorderRadius.circular(
+                          Dimensions.radius10,
+                        ),
                       ),
-                      child: Center(child: Text("Yes, Delete", style: TextStyle(color: Colors.white, fontSize: Dimensions.font15, fontWeight: FontWeight.bold))),
+                      child: Center(
+                        child: Text(
+                          "Yes, Delete",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: Dimensions.font15,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                 ),
               ],
-            )
+            ),
           ],
         ),
       ),
@@ -152,16 +203,33 @@ class _LocationScreenState extends State<LocationScreen> {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (context) {
         return Container(
           padding: EdgeInsets.symmetric(vertical: Dimensions.height20),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Center(child: Container(width: 40, height: 5, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(10)))),
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ),
               SizedBox(height: Dimensions.height20),
-              Text("Choose a Label", style: TextStyle(fontSize: Dimensions.font18, fontWeight: FontWeight.bold)),
+              Text(
+                "Choose a Label",
+                style: TextStyle(
+                  fontSize: Dimensions.font18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
               SizedBox(height: Dimensions.height15),
               Expanded(
                 child: ListView.builder(
@@ -172,10 +240,23 @@ class _LocationScreenState extends State<LocationScreen> {
                     return ListTile(
                       leading: Container(
                         padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(color: AppColors.primaryColor.withOpacity(0.1), shape: BoxShape.circle),
-                        child: Icon(item['icon'], color: AppColors.primaryColor, size: 20),
+                        decoration: BoxDecoration(
+                          color: AppColors.primaryColor.withOpacity(0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          item['icon'],
+                          color: AppColors.primaryColor,
+                          size: 20,
+                        ),
                       ),
-                      title: Text(item['name'], style: TextStyle(fontSize: Dimensions.font16, fontWeight: FontWeight.w500)),
+                      title: Text(
+                        item['name'],
+                        style: TextStyle(
+                          fontSize: Dimensions.font16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
                       onTap: () {
                         setState(() => selectedName = item['name']);
                         Navigator.pop(context);
@@ -217,23 +298,34 @@ class _LocationScreenState extends State<LocationScreen> {
       _mapController.move(currentLatLng, 17.0);
 
       try {
-        List<Placemark> placemarks = await placemarkFromCoordinates(position.latitude, position.longitude);
+        List<Placemark> placemarks = await placemarkFromCoordinates(
+          position.latitude,
+          position.longitude,
+        );
         if (placemarks.isNotEmpty) {
           Placemark place = placemarks[0];
           List<String> addressParts = [];
-          if (place.street != null && place.street!.isNotEmpty) addressParts.add(place.street!);
-          if (place.subLocality != null && place.subLocality!.isNotEmpty) addressParts.add(place.subLocality!);
-          if (place.locality != null && place.locality!.isNotEmpty) addressParts.add(place.locality!);
-          if (place.administrativeArea != null && place.administrativeArea!.isNotEmpty) addressParts.add(place.administrativeArea!);
+          if (place.street != null && place.street!.isNotEmpty)
+            addressParts.add(place.street!);
+          if (place.subLocality != null && place.subLocality!.isNotEmpty)
+            addressParts.add(place.subLocality!);
+          if (place.locality != null && place.locality!.isNotEmpty)
+            addressParts.add(place.locality!);
+          if (place.administrativeArea != null &&
+              place.administrativeArea!.isNotEmpty)
+            addressParts.add(place.administrativeArea!);
           locationController.text = addressParts.join(", ");
         } else {
-          locationController.text = "${position.latitude}, ${position.longitude}";
+          locationController.text =
+              "${position.latitude}, ${position.longitude}";
         }
       } catch (e) {
         locationController.text = "${position.latitude}, ${position.longitude}";
       }
     } catch (e) {
-      CustomSnackBar.failure(message: "GPS signal weak. Step outside or try again.");
+      CustomSnackBar.failure(
+        message: "GPS signal weak. Step outside or try again.",
+      );
     } finally {
       if (mounted) setState(() => isLoadingLocation = false);
     }
@@ -245,14 +337,16 @@ class _LocationScreenState extends State<LocationScreen> {
       backgroundColor: AppColors.backgroundColor,
       body: Obx(() {
         final bool isUserLoading = userController.userModel.value == null;
-        final User user = isUserLoading ? _dummyUser : userController.userModel.value!;
+        final User user = isUserLoading
+            ? _dummyUser
+            : userController.userModel.value!;
 
         return Skeletonizer(
           enabled: isUserLoading,
           child: Container(
             padding: EdgeInsets.fromLTRB(
               Dimensions.width20,
-              Dimensions.height100-Dimensions.height20,
+              Dimensions.height100 - Dimensions.height20,
               Dimensions.width20,
               Dimensions.height20,
             ),
@@ -268,12 +362,27 @@ class _LocationScreenState extends State<LocationScreen> {
                         onTap: () => Get.back(),
                         child: Container(
                           padding: const EdgeInsets.all(8),
-                          decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle, boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 5)]),
-                          child: const Icon(Icons.arrow_back, color: Colors.black),
+                          decoration: const BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(color: Colors.black12, blurRadius: 5),
+                            ],
+                          ),
+                          child: const Icon(
+                            Icons.arrow_back,
+                            color: Colors.black,
+                          ),
                         ),
                       ),
                       SizedBox(width: Dimensions.width15),
-                      Text('Manage Locations', style: TextStyle(fontSize: Dimensions.font22, fontWeight: FontWeight.bold)),
+                      Text(
+                        'Manage Locations',
+                        style: TextStyle(
+                          fontSize: Dimensions.font22,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ],
                   ),
                   SizedBox(height: Dimensions.height30),
@@ -282,8 +391,21 @@ class _LocationScreenState extends State<LocationScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text('Saved Locations', style: TextStyle(fontSize: Dimensions.font16, fontWeight: FontWeight.w600)),
-                      Text('Long-press to delete', style: TextStyle(fontSize: 12, color: AppColors.grey5, fontStyle: FontStyle.italic)),
+                      Text(
+                        'Saved Locations',
+                        style: TextStyle(
+                          fontSize: Dimensions.font16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      Text(
+                        'Long-press to delete',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppColors.grey5,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
                     ],
                   ),
                   SizedBox(height: Dimensions.height15),
@@ -292,8 +414,17 @@ class _LocationScreenState extends State<LocationScreen> {
                     Container(
                       width: double.infinity,
                       padding: EdgeInsets.all(Dimensions.height20),
-                      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(15), border: Border.all(color: Colors.grey.withOpacity(0.2))),
-                      child: const Center(child: Text("No saved locations yet.", style: TextStyle(color: Colors.grey))),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(15),
+                        border: Border.all(color: Colors.grey.withOpacity(0.2)),
+                      ),
+                      child: const Center(
+                        child: Text(
+                          "No saved locations yet.",
+                          style: TextStyle(color: Colors.grey),
+                        ),
+                      ),
                     )
                   else
                     SingleChildScrollView(
@@ -311,30 +442,52 @@ class _LocationScreenState extends State<LocationScreen> {
                             child: Container(
                               height: 100,
                               width: 110,
-                              margin: EdgeInsets.only(right: Dimensions.width15),
+                              margin: EdgeInsets.only(
+                                right: Dimensions.width15,
+                              ),
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
                                 color: Colors.white,
-                                borderRadius: BorderRadius.circular(Dimensions.radius15),
-                                border: Border.all(color: Colors.grey.withOpacity(0.15)),
-                                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 4))],
+                                borderRadius: BorderRadius.circular(
+                                  Dimensions.radius15,
+                                ),
+                                border: Border.all(
+                                  color: Colors.grey.withOpacity(0.15),
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.03),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
                               ),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Icon(_getLocationIcon(location.label ?? ""), color: AppColors.accentColor, size: 24),
+                                  Icon(
+                                    _getLocationIcon(location.label ?? ""),
+                                    color: AppColors.accentColor,
+                                    size: 24,
+                                  ),
                                   const Spacer(),
                                   Text(
                                     location.label ?? 'Location',
-                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                    ),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                   SizedBox(height: Dimensions.height5),
                                   Text(
-                                    location.preciseLocation ?? '',
-                                    style: const TextStyle(fontSize: 10, color: Colors.grey),
+                                    '${location.lat}, ${location.lng}',
+                                    style: const TextStyle(
+                                      fontSize: 10,
+                                      color: Colors.grey,
+                                    ),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                   ),
@@ -349,15 +502,30 @@ class _LocationScreenState extends State<LocationScreen> {
                   SizedBox(height: Dimensions.height30),
 
                   // --- ADD NEW LOCATION CARD ---
-                  Text('Add New Location', style: TextStyle(fontSize: Dimensions.font16, fontWeight: FontWeight.w600)),
-                  Text('You must be physically at the location to save it accurately.', style: TextStyle(fontSize: 13, color: AppColors.grey5)),
+                  Text(
+                    'Add New Location',
+                    style: TextStyle(
+                      fontSize: Dimensions.font16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  Text(
+                    'You must be physically at the location to save it accurately.',
+                    style: TextStyle(fontSize: 13, color: AppColors.grey5),
+                  ),
                   SizedBox(height: Dimensions.height15),
 
                   Container(
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(Dimensions.radius20),
-                      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 15, offset: const Offset(0, 5))],
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 15,
+                          offset: const Offset(0, 5),
+                        ),
+                      ],
                     ),
                     child: Column(
                       children: [
@@ -366,35 +534,58 @@ class _LocationScreenState extends State<LocationScreen> {
                           height: 180,
                           width: double.infinity,
                           child: ClipRRect(
-                            borderRadius: BorderRadius.vertical(top: Radius.circular(Dimensions.radius20)),
+                            borderRadius: BorderRadius.vertical(
+                              top: Radius.circular(Dimensions.radius20),
+                            ),
                             child: Stack(
                               children: [
                                 FlutterMap(
                                   mapController: _mapController,
-                                  options: MapOptions(initialCenter: _initialPosition, initialZoom: 15.0),
+                                  options: MapOptions(
+                                    initialCenter: _initialPosition,
+                                    initialZoom: 15.0,
+                                  ),
                                   children: [
-                                    TileLayer(urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', userAgentPackageName: 'com.otonav.app'),
+                                    TileLayer(
+                                      urlTemplate:
+                                          'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                                      userAgentPackageName: 'com.otonav.app',
+                                    ),
                                     if (_currentPosition != null)
                                       MarkerLayer(
                                         markers: [
                                           Marker(
                                             point: _currentPosition!,
-                                            width: 40, height: 40,
-                                            child: const Icon(Icons.location_on, color: Colors.redAccent, size: 40),
+                                            width: 40,
+                                            height: 40,
+                                            child: const Icon(
+                                              Icons.location_on,
+                                              color: Colors.redAccent,
+                                              size: 40,
+                                            ),
                                           ),
                                         ],
                                       ),
                                   ],
                                 ),
                                 Positioned(
-                                  bottom: 10, right: 10,
+                                  bottom: 10,
+                                  right: 10,
                                   child: FloatingActionButton.small(
                                     heroTag: "locate_me_btn",
                                     backgroundColor: Colors.white,
                                     onPressed: getCurrentLocation,
                                     child: isLoadingLocation
-                                        ? const Padding(padding: EdgeInsets.all(8.0), child: CircularProgressIndicator(strokeWidth: 2))
-                                        : const Icon(Icons.my_location, color: AppColors.primaryColor),
+                                        ? const Padding(
+                                            padding: EdgeInsets.all(8.0),
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                            ),
+                                          )
+                                        : const Icon(
+                                            Icons.my_location,
+                                            color: AppColors.primaryColor,
+                                          ),
                                   ),
                                 ),
                               ],
@@ -408,12 +599,33 @@ class _LocationScreenState extends State<LocationScreen> {
                             children: [
                               Container(
                                 padding: EdgeInsets.all(Dimensions.height10),
-                                decoration: BoxDecoration(color: Colors.blue.withOpacity(0.08), borderRadius: BorderRadius.circular(Dimensions.radius10), border: Border.all(color: Colors.blue.withOpacity(0.2))),
+                                decoration: BoxDecoration(
+                                  color: Colors.blue.withOpacity(0.08),
+                                  borderRadius: BorderRadius.circular(
+                                    Dimensions.radius10,
+                                  ),
+                                  border: Border.all(
+                                    color: Colors.blue.withOpacity(0.2),
+                                  ),
+                                ),
                                 child: Row(
                                   children: [
-                                    Icon(Iconsax.info_circle, color: Colors.blue[700], size: 18),
+                                    Icon(
+                                      Iconsax.info_circle,
+                                      color: Colors.blue[700],
+                                      size: 18,
+                                    ),
                                     SizedBox(width: Dimensions.width10),
-                                    Expanded(child: Text("Tip: Step outside for 10 seconds before generating to ensure maximum GPS precision.", style: TextStyle(fontSize: 12, color: Colors.blue[800], fontWeight: FontWeight.w500))),
+                                    Expanded(
+                                      child: Text(
+                                        "Tip: Step outside for 10 seconds before generating to ensure maximum GPS precision.",
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.blue[800],
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ),
                                   ],
                                 ),
                               ),
@@ -422,13 +634,40 @@ class _LocationScreenState extends State<LocationScreen> {
                               InkWell(
                                 onTap: showLocationNameModal,
                                 child: Container(
-                                  padding: EdgeInsets.symmetric(horizontal: Dimensions.width20, vertical: Dimensions.height15),
-                                  decoration: BoxDecoration(borderRadius: BorderRadius.circular(Dimensions.radius10), color: AppColors.backgroundColor, border: Border.all(color: Colors.grey.withOpacity(0.2))),
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: Dimensions.width20,
+                                    vertical: Dimensions.height15,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(
+                                      Dimensions.radius10,
+                                    ),
+                                    color: AppColors.backgroundColor,
+                                    border: Border.all(
+                                      color: Colors.grey.withOpacity(0.2),
+                                    ),
+                                  ),
                                   child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
                                     children: [
-                                      Text(selectedName ?? 'Select a label (e.g. Home, Office)', style: TextStyle(fontSize: 14, color: selectedName == null ? AppColors.grey5 : Colors.black, fontWeight: selectedName == null ? FontWeight.normal : FontWeight.w500)),
-                                      Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.grey5),
+                                      Text(
+                                        selectedName ??
+                                            'Select a label (e.g. Home, Office)',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          color: selectedName == null
+                                              ? AppColors.grey5
+                                              : Colors.black,
+                                          fontWeight: selectedName == null
+                                              ? FontWeight.normal
+                                              : FontWeight.w500,
+                                        ),
+                                      ),
+                                      Icon(
+                                        Icons.keyboard_arrow_down_rounded,
+                                        color: AppColors.grey5,
+                                      ),
                                     ],
                                   ),
                                 ),
@@ -438,7 +677,13 @@ class _LocationScreenState extends State<LocationScreen> {
                               GestureDetector(
                                 onTap: getCurrentLocation,
                                 child: AbsorbPointer(
-                                  child: CustomTextField(controller: locationController, labelText: isLoadingLocation ? 'Acquiring satellites...' : 'Generated Address', suffixIcon: const Icon(Iconsax.location)),
+                                  child: CustomTextField(
+                                    controller: locationController,
+                                    labelText: isLoadingLocation
+                                        ? 'Acquiring satellites...'
+                                        : 'Generated Address',
+                                    suffixIcon: const Icon(Iconsax.location),
+                                  ),
                                 ),
                               ),
                               SizedBox(height: Dimensions.height24),
@@ -446,16 +691,26 @@ class _LocationScreenState extends State<LocationScreen> {
                               CustomButton(
                                 text: 'Save Location',
                                 onPressed: () {
-                                  String address = locationController.text.trim();
+                                  String address = locationController.text
+                                      .trim();
                                   if (selectedName == null) {
-                                    CustomSnackBar.failure(message: "Please choose a label");
+                                    CustomSnackBar.failure(
+                                      message: "Please choose a label",
+                                    );
                                     return;
                                   }
                                   if (address.isEmpty || isLoadingLocation) {
-                                    CustomSnackBar.failure(message: "Please generate a valid location first");
+                                    CustomSnackBar.failure(
+                                      message:
+                                          "Please generate a valid location first",
+                                    );
                                     return;
                                   }
-                                  authController.addNewLocation(selectedName!, address);
+                                  authController.addNewLocation(
+                                    selectedName!,
+                                    _currentPosition!.latitude,
+                                    _currentPosition!.longitude,
+                                  );
                                 },
                               ),
                             ],

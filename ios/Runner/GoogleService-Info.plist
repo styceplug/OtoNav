@@ -9,7 +9,7 @@
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
-	<string>com.project.otonav</string>
+	<string>com.project.otonav.otonav</string>
 	<key>PROJECT_ID</key>
 	<string>otonav-cbc0b</string>
 	<key>STORAGE_BUCKET</key>
@@ -25,6 +25,6 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:621376031524:ios:6b89145447b166efd441b1</string>
+	<string>1:621376031524:ios:e40e81346424dbd2d441b1</string>
 </dict>
 </plist>

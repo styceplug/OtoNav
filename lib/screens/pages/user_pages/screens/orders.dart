@@ -5,6 +5,7 @@ import 'package:otonav/controllers/order_controller.dart';
 import 'package:otonav/widgets/empty_state_widget.dart';
 import 'package:otonav/widgets/order_card.dart';
 import 'package:skeletonizer/skeletonizer.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../model/order_model.dart';
 import '../../../../routes/routes.dart';
@@ -83,17 +84,22 @@ class _CustomerOrdersPageState extends State<CustomerOrdersPage> {
                     ],
                   ),
                 ),
-                Container(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: Dimensions.width20,
-                    vertical: Dimensions.height20,
+                InkWell(
+                  onTap: (){
+                    Get.toNamed(AppRoutes.notificationScreen);
+                  },
+                  child: Container(
+                    padding: EdgeInsets.all(Dimensions.width15),
+                    decoration: const BoxDecoration(
+                      color: AppColors.cardColor,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Iconsax.notification,
+                    ),
                   ),
-                  decoration: const BoxDecoration(
-                    color: AppColors.cardColor,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Iconsax.notification),
                 ),
+
               ],
             ),
             SizedBox(height: Dimensions.height20),
@@ -150,15 +156,25 @@ class _CustomerOrdersPageState extends State<CustomerOrdersPage> {
                       return Padding(
                         padding: EdgeInsets.only(bottom: Dimensions.height15),
                         child: OrderCard(
-                          isLocationSet: locationIsSet,
                           status: order.status ?? '',
                           orderId: order.orderNumber ?? "N/A",
                           itemCount: order.packageDescription ?? "Items",
                           vendorName: order.rider?.name ?? 'Assigning rider...',
+                          customerLocationPrecise: locationIsSet ? order.customerLocationLabel : null,
+                          deliveryPin: order.deliveryPin,
+                          onFetchPin: () async {
+                            final res = await orderController.orderRepo.getOrderDetails(order.id!);
+                            if (res.statusCode == 200 && res.body['success'] == true) {
+                              return res.body['data']['deliveryPin']?.toString();
+                            } else {
+                              CustomSnackBar.failure(message: "Failed to fetch PIN. Please try again.");
+                              return null;
+                            }
+                          },
 
                           // Click Protections: Ignore taps if skeleton is loading
                           onSetLocationTap: () {
-                            if (!isLoading) Get.toNamed(AppRoutes.locationScreen);
+                            // if (!isLoading) Get.toNamed(AppRoutes.locationScreen);
                           },
                           onTrackOrderTap: () {
                             if (!isLoading) {
@@ -168,11 +184,21 @@ class _CustomerOrdersPageState extends State<CustomerOrdersPage> {
                               );
                             }
                           },
-                          onCallVendorTap: () {
-                            if (!isLoading) {
-                              // TODO: Add call logic
-                            }
-                          },
+                            onCallVendorTap: () async {
+                              String? phone = order.rider?.phoneNumber;
+                              if (phone != null && phone.isNotEmpty) {
+                                String cleanPhone = phone.replaceAll(RegExp(r'[^\d+]'), '');
+                                final Uri launchUri = Uri(scheme: 'tel', path: cleanPhone);
+                                try {
+                                  if (!await launchUrl(launchUri, mode: LaunchMode.platformDefault)) throw 'Could not launch $launchUri';
+                                } catch (e) {
+                                  CustomSnackBar.failure(message: "Unable to make call on this device.");
+                                }
+                              } else {
+                                CustomSnackBar.failure(message: "Phone number not available.");
+                              }
+                            },
+
                           onRateDeliveryTap: () {
                             if (!isLoading) _showRatingModal(context, order.id!);
                           },

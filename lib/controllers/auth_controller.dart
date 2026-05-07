@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:otonav/controllers/app_controller.dart';
 import 'package:otonav/controllers/user_controller.dart';
 import 'package:otonav/helpers/global_loader_controller.dart';
 import 'package:otonav/utils/app_constants.dart';
@@ -50,8 +51,8 @@ class AuthController extends GetxController {
   }
 
 
-  Future<void> addNewLocation(String label, String address) async {
-    if (label.isEmpty || address.isEmpty) {
+  Future<void> addNewLocation(String label, double lat, double lng) async {
+    if (label.isEmpty) {
       CustomSnackBar.failure(message: "Please select a label and generate a location.");
       return;
     }
@@ -59,18 +60,16 @@ class AuthController extends GetxController {
     Map<String, dynamic> body = {
       "addLocation": {
         "label": label,
-        "preciseLocation": address
+        "lat": lat,
+        "lng": lng
       }
     };
 
     loader.showLoader();
-
     Response response = await authRepo.updateProfile(body);
-
     loader.hideLoader();
 
     if (response.statusCode == 200 && response.body['success'] == true) {
-
       userModel.value = User.fromJson(response.body['data']);
 
       CustomSnackBar.success(message: "Location saved successfully!");
@@ -229,6 +228,8 @@ class AuthController extends GetxController {
       authRepo.apiClient.updateHeader(accessToken);
 
       await saveUserSession(accessToken, refreshToken ?? "", role);
+      AppController appController = Get.find<AppController>();
+      await appController.saveDeviceToken();
       await userController.getUserProfile();
       loader.hideLoader();
 

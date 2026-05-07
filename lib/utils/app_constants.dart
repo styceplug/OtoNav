@@ -18,7 +18,7 @@ class AppConstants {
   static const String GET_PROFILE = '/api/auth/profile';
   static const String PUT_PROFILE_UPDATE = '/api/auth/profile';
   static const String REFRESH_TOKEN = '/api/auth/refresh-token';
-  static const String POST_FCM_TOKEN = 'api/users/fcm-token';
+  static const String POST_FCM_TOKEN = '/api/users/fcm-token';
   static const String TOGGLE_RIDER_AVAILABILITY = '/api/riders/toggle-activity';
 
 
@@ -39,6 +39,23 @@ class AppConstants {
 
 
   static String DELETE_SAVED_LOCATION(String label) => '/api/customers/profile/locations/$label';
+
+
+  static const String GET_WAITLIST = '/api/verified-riders/waitlist/pending';
+  static String ACCEPT_ORDER_ON_WAITLIST(String id) => '/api/verified-riders/waitlist/$id/accept';
+  static String UPDATE_VERIFIED_ORDER_STATUS(String id) => '/api/verified-riders/orders/$id/status';
+  static String UPDATE_VERIFIED_RIDER_LOCATION(String id) => '/api/verified-riders/orders/$id/location';
+
+  static const String GET_ACTIVE_ASSIGNMENTS_URI = '/api/verified-riders/assignments/active';
+
+
+  static const String GET_NOTIFICATIONS = '/api/notifications';
+  static const String MARK_ALL_NOTIFICATIONS_AS_READ = '/api/notifications/read-all';
+  static String MARK_SINGLE_NOTIFICATION_AS_READ(String id) => '/api/notifications/$id/read';
+
+
+
+
 
 
   static String getPngAsset(String image) {

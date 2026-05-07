@@ -60,13 +60,7 @@ class OSMHelper {
           'stops': stopsAway, // RETURN STOPS AWAY
         };
 
-        return {
-          'points': points,
-          'distance': _formatDistance(route['distance']),
-          'duration': _formatDuration(route['duration']),
-          'instruction': instruction,
-          'stepDistance': stepDistance,
-        };
+
       }
     } catch (e) {
       print("OSRM Error: $e");

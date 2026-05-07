@@ -6,18 +6,34 @@ import '../utils/colors.dart';
 import '../utils/dimensions.dart';
 import 'custom_button.dart';
 
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
+import 'package:iconsax/iconsax.dart';
+import 'package:otonav/utils/colors.dart';
+import 'package:otonav/utils/dimensions.dart';
+import 'package:otonav/widgets/custom_button.dart';
 
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
+import 'package:iconsax/iconsax.dart';
+import 'package:otonav/utils/colors.dart';
+import 'package:otonav/utils/dimensions.dart';
+import 'package:otonav/widgets/custom_button.dart';
 
 class OrderCard extends StatefulWidget {
   final String orderId;
   final String itemCount;
   final String vendorName;
   final String status;
-  final bool isLocationSet;
+  final String? customerLocationPrecise;
+  final String? deliveryPin;
   final VoidCallback onSetLocationTap;
   final VoidCallback onTrackOrderTap;
   final VoidCallback onCallVendorTap;
   final VoidCallback? onRateDeliveryTap;
+
+  // ✅ NEW: Callback to fetch the PIN
+  final Future<String?> Function()? onFetchPin;
 
   const OrderCard({
     Key? key,
@@ -28,8 +44,10 @@ class OrderCard extends StatefulWidget {
     required this.onSetLocationTap,
     required this.onTrackOrderTap,
     required this.onCallVendorTap,
-    this.isLocationSet = false,
+    this.customerLocationPrecise,
+    this.deliveryPin,
     this.onRateDeliveryTap,
+    this.onFetchPin,
   }) : super(key: key);
 
   @override
@@ -39,47 +57,61 @@ class OrderCard extends StatefulWidget {
 class _OrderCardState extends State<OrderCard> with SingleTickerProviderStateMixin {
   bool _isExpanded = false;
 
-  // Helper to determine if order is currently active/tracking allowed
-  bool get _isOrderActive {
+  // ✅ NEW: Local states for fetching the PIN dynamically
+  bool _isLoadingPin = false;
+  String? _localPin;
+
+  bool get _isLocationSet =>
+      widget.customerLocationPrecise != null &&
+          widget.customerLocationPrecise!.isNotEmpty &&
+          widget.customerLocationPrecise != 'null';
+
+  bool get _isTrackable {
     final s = widget.status.toLowerCase();
     return s == 'confirmed' ||
-        s == 'rider_accepted' ||
         s == 'package_picked_up' ||
         s == 'in_transit' ||
         s == 'arrived_at_location';
   }
 
-  bool get _isCompleted => widget.status.toLowerCase() == 'delivered' || widget.status.toLowerCase() == 'completed';
-  bool get _isCancelled => widget.status.toLowerCase() == 'cancelled' || widget.status.toLowerCase() == 'rejected';
+  bool get _isWaitingForRider {
+    final s = widget.status.toLowerCase();
+    return s == 'pending' || s == 'customer_location_set';
+  }
+
+  bool get _isCompleted =>
+      widget.status.toLowerCase() == 'delivered' ||
+          widget.status.toLowerCase() == 'completed';
+
+  bool get _isCancelled =>
+      widget.status.toLowerCase() == 'cancelled' ||
+          widget.status.toLowerCase() == 'rejected';
 
   @override
   Widget build(BuildContext context) {
+    // ✅ Determine which PIN to show (from list API or specific fetch)
+    String? pinToShow = widget.deliveryPin ?? _localPin;
+
     return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: Dimensions.width20,
-        vertical: Dimensions.height20,
-      ),
+      padding: EdgeInsets.all(Dimensions.width20),
       decoration: BoxDecoration(
         color: AppColors.white,
         borderRadius: BorderRadius.circular(Dimensions.radius20),
+        border: Border.all(color: Colors.grey.withOpacity(0.1)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: Offset(0, 2),
-          )
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
+          ),
         ],
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // --- HEADER ROW ---
+          // --- HEADER ROW (Always visible) ---
           InkWell(
-            onTap: () {
-              setState(() {
-                _isExpanded = !_isExpanded;
-              });
-            },
+            onTap: () => setState(() => _isExpanded = !_isExpanded),
             child: Row(
               children: [
                 Container(
@@ -87,44 +119,72 @@ class _OrderCardState extends State<OrderCard> with SingleTickerProviderStateMix
                   decoration: BoxDecoration(
                     color: _isCancelled
                         ? AppColors.error.withOpacity(0.1)
-                        : (_isCompleted ? Colors.green.withOpacity(0.1) : AppColors.cardColor),
+                        : (_isCompleted
+                        ? Colors.green.withOpacity(0.1)
+                        : AppColors.cardColor),
                     borderRadius: BorderRadius.circular(Dimensions.radius10),
                   ),
                   child: Icon(
-                    _isCompleted ? Iconsax.tick_circle : (_isCancelled ? Iconsax.close_circle : Iconsax.box),
+                    _isCompleted
+                        ? Iconsax.tick_circle
+                        : (_isCancelled ? Iconsax.close_circle : Iconsax.box),
                     color: _isCancelled
                         ? AppColors.error
-                        : (_isCompleted ? Colors.green : AppColors.black),
+                        : (_isCompleted ? Colors.green : AppColors.primaryColor),
                   ),
                 ),
-                SizedBox(width: Dimensions.width20),
+                SizedBox(width: Dimensions.width15),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        widget.orderId,
+                        widget.vendorName,
                         style: TextStyle(
-                          fontSize: Dimensions.font14,
-                          fontWeight: FontWeight.w600,
+                          fontSize: Dimensions.font16,
+                          fontWeight: FontWeight.bold,
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                       Text(
-                        _isCompleted ? 'Delivered' : (_isCancelled ? 'Cancelled' : widget.itemCount),
+                        widget.itemCount,
                         style: TextStyle(
                           fontSize: Dimensions.font13,
-                          fontWeight: FontWeight.w300,
-                          color: _isCompleted ? Colors.green : (_isCancelled ? AppColors.error : Colors.grey),
+                          color: Colors.grey[600],
                         ),
                       ),
                     ],
                   ),
                 ),
-                // Arrow rotation
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: _isCompleted
+                        ? Colors.green.withOpacity(0.1)
+                        : (_isCancelled
+                        ? Colors.red.withOpacity(0.1)
+                        : Colors.blue.withOpacity(0.1)),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    _isCompleted
+                        ? 'Delivered'
+                        : (_isCancelled ? 'Cancelled' : 'Active'),
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: _isCompleted
+                          ? Colors.green
+                          : (_isCancelled ? Colors.red : Colors.blue),
+                    ),
+                  ),
+                ),
+                SizedBox(width: 8),
                 AnimatedRotation(
                   turns: _isExpanded ? 0.5 : 0.0,
                   duration: const Duration(milliseconds: 200),
-                  child: Icon(Icons.arrow_drop_down, color: Colors.grey),
+                  child: const Icon(Icons.keyboard_arrow_down, color: Colors.grey),
                 ),
               ],
             ),
@@ -135,158 +195,160 @@ class _OrderCardState extends State<OrderCard> with SingleTickerProviderStateMix
             firstChild: Container(height: 0),
             secondChild: Column(
               children: [
-                Divider(color: AppColors.grey4, height: 30),
+                SizedBox(height: Dimensions.height15),
+                Divider(color: Colors.grey.withOpacity(0.2)),
+                SizedBox(height: Dimensions.height15),
 
-                // 1. RIDER / VENDOR ROW (Hide if cancelled or pending assignment)
-                if (!_isCancelled) ...[
-                  Row(
-                    children: [
-                      Container(
-                        padding: EdgeInsets.all(Dimensions.width10),
-                        decoration: BoxDecoration(
-                          color: AppColors.accentColor.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(Dimensions.radius15),
+                // --- THE DELIVERY PIN BLOCK ---
+                if (!_isCancelled && _isTrackable) ...[
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 20),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.withOpacity(0.05),
+                      borderRadius: BorderRadius.circular(15),
+                      border: Border.all(color: Colors.blue.withOpacity(0.2)),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "Delivery PIN",
+                              style: TextStyle(
+                                color: Colors.blue[800],
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              pinToShow != null && pinToShow.isNotEmpty
+                                  ? "Give this to your rider"
+                                  : "Hidden for security",
+                              style: TextStyle(
+                                color: Colors.grey[600],
+                                fontSize: 11,
+                              ),
+                            ),
+                          ],
                         ),
-                        child: Icon(Iconsax.profile_2user, color: AppColors.accentColor),
-                      ),
-                      SizedBox(width: Dimensions.width20),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
+
+                        // Show PIN if available
+                        if (pinToShow != null && pinToShow.isNotEmpty)
                           Text(
-                            'Assigned Rider',
+                            pinToShow,
                             style: TextStyle(
-                              fontSize: Dimensions.font12,
-                              fontWeight: FontWeight.w300,
-                              color: Colors.grey,
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 4,
+                              color: Colors.blue[900],
+                            ),
+                          )
+                        // Show Loader if fetching
+                        else if (_isLoadingPin)
+                          const SizedBox(
+                              height: 24,
+                              width: 24,
+                              child: CircularProgressIndicator(strokeWidth: 2)
+                          )
+                        // Show "Reveal" Button if hidden
+                        else
+                          TextButton.icon(
+                            onPressed: () async {
+                              if (widget.onFetchPin == null) return;
+                              setState(() => _isLoadingPin = true);
+
+                              String? fetchedPin = await widget.onFetchPin!();
+
+                              if (mounted) {
+                                setState(() {
+                                  _localPin = fetchedPin;
+                                  _isLoadingPin = false;
+                                });
+                              }
+                            },
+                            icon: const Icon(Icons.visibility, size: 18),
+                            label: const Text("Reveal"),
+                            style: TextButton.styleFrom(
+                              foregroundColor: Colors.blue[800],
+                              padding: EdgeInsets.zero,
                             ),
                           ),
-                          Text(
-                            widget.vendorName,
-                            style: TextStyle(
-                              fontSize: Dimensions.font15,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                      Spacer(),
-                      // Only show call button if active or completed
-                      if (_isOrderActive || _isCompleted)
-                        InkWell(
-                          onTap: widget.onCallVendorTap,
-                          child: Container(
-                            padding: EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: Colors.green.withOpacity(0.1)
-                            ),
-                            child: Icon(Iconsax.call_calling, color: Colors.green),
-                          ),
-                        ),
-                    ],
+                      ],
+                    ),
                   ),
                   SizedBox(height: Dimensions.height20),
                 ],
 
-                // 2. ACTION BUTTONS LOGIC
-
-                // CASE A: Location Not Set
-                if (!widget.isLocationSet && !_isCancelled && !_isCompleted) ...[
+                // --- ACTION BUTTONS LOGIC ---
+                if (!_isLocationSet && !_isCancelled && !_isCompleted) ...[
                   CustomButton(
                     text: 'Set Delivery Location',
                     onPressed: widget.onSetLocationTap,
-                    backgroundColor: AppColors.cardColor,
-                    padding: EdgeInsets.symmetric(vertical: Dimensions.height10),
-                    textStyle: TextStyle(
-                      fontSize: Dimensions.font14,
-                      fontWeight: FontWeight.w500,
-                      color: AppColors.primaryColor,
-                    ),
-                    icon: Icon(CupertinoIcons.location_circle_fill, color: AppColors.primaryColor, size: 18),
+                    backgroundColor: AppColors.primaryColor,
+                    icon: const Icon(CupertinoIcons.location_solid, color: Colors.white, size: 18),
                   ),
                 ]
-
-                // CASE B: Waiting for Rider (Location Set but still Pending)
-                else if (widget.isLocationSet && (widget.status == 'pending' || widget.status == 'customer_location_set')) ...[
+                else if (_isLocationSet && _isWaitingForRider) ...[
                   Container(
-                    width: double.infinity,
-                    padding: EdgeInsets.symmetric(vertical: 12, horizontal: 15),
+                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 15),
                     decoration: BoxDecoration(
-                        color: Colors.orange.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: Colors.orange.withOpacity(0.3))
+                      color: Colors.orange.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(10),
                     ),
                     child: Row(
                       children: [
-                        SizedBox(
-                            height: 15, width: 15,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.orange)
+                        const SizedBox(
+                          height: 15, width: 15,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.orange),
                         ),
-                        SizedBox(width: 10),
+                        const SizedBox(width: 10),
                         Expanded(
                           child: Text(
-                            'Waiting for rider to accept...',
-                            style: TextStyle(fontSize: 13, color: Colors.orange[800], fontWeight: FontWeight.w500),
+                            'Waiting for rider to start journey...',
+                            style: TextStyle(color: Colors.orange[800], fontWeight: FontWeight.w500),
                           ),
                         ),
                       ],
                     ),
                   ),
                 ]
-
-                // CASE C: Active Order (Track)
-                else if (_isOrderActive) ...[
-                    CustomButton(
-                      text: 'Track Order',
-                      onPressed: widget.onTrackOrderTap,
-                      backgroundColor: AppColors.accentColor,
-                      padding: EdgeInsets.symmetric(vertical: Dimensions.height10),
-                      textStyle: TextStyle(
-                        fontSize: Dimensions.font15,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.white,
-                      ),
-                    ),
-                  ]
-
-                  // CASE D: Completed (Rate)
-                  else if (_isCompleted) ...[
-                      CustomButton(
-                        text: 'Rate Delivery',
-                        onPressed: widget.onRateDeliveryTap, // Use the new callback
-                        backgroundColor: Color(0xFF34C759), // Green color
-                        padding: EdgeInsets.symmetric(vertical: Dimensions.height10),
-                        icon: Icon(Iconsax.star1, color: Colors.white, size: 18),
-                        textStyle: TextStyle(
-                          fontSize: Dimensions.font15,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.white,
-                        ),
-                      ),
-                    ]
-
-                    // CASE E: Cancelled
-                    else if (_isCancelled) ...[
-                        Container(
-                          width: double.infinity,
-                          padding: EdgeInsets.symmetric(vertical: 12),
-                          decoration: BoxDecoration(
-                            color: AppColors.error.withOpacity(0.05),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Center(
-                            child: Text(
-                              'Order Cancelled',
-                              style: TextStyle(
-                                  color: AppColors.error,
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 14
-                              ),
+                else if (_isTrackable) ...[
+                    Row(
+                      children: [
+                        InkWell(
+                          onTap: widget.onCallVendorTap,
+                          child: Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.green.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(10),
                             ),
+                            child: const Icon(Iconsax.call, color: Colors.green),
+                          ),
+                        ),
+                        SizedBox(width: Dimensions.width15),
+                        Expanded(
+                          child: CustomButton(
+                            text: 'Track Order',
+                            onPressed: widget.onTrackOrderTap,
+                            backgroundColor: Colors.blue,
                           ),
                         ),
                       ],
+                    ),
+                  ]
+                  else if (_isCompleted) ...[
+                      CustomButton(
+                        text: 'Rate Delivery',
+                        onPressed: widget.onRateDeliveryTap,
+                        backgroundColor: Colors.green,
+                        icon: const Icon(Iconsax.star1, color: Colors.white, size: 18),
+                      ),
+                    ],
               ],
             ),
             crossFadeState: _isExpanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,

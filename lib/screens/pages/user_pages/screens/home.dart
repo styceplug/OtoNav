@@ -39,8 +39,8 @@ class _CustomerHomePageState extends State<CustomerHomePage> {
   final User _dummyUser = User(
     name: "Loading Name",
     locations: [
-      LocationModel(label: "Home", preciseLocation: "Loading address..."),
-      LocationModel(label: "Office", preciseLocation: "Loading address..."),
+      LocationModel(label: "Home", lat: 0.00, lng: 0.00),
+      LocationModel(label: "Office", lat: 0.00, lng: 0.00),
     ],
   );
 
@@ -84,9 +84,148 @@ class _CustomerHomePageState extends State<CustomerHomePage> {
     return match['icon'] as IconData;
   }
 
-  // ... (Keep your exact _showLocationPicker method here. Do not change it.) ...
-  void _showLocationPicker(String orderId) async {
-    // Your existing bottom sheet code goes here
+  void _showLocationPicker(String orderId) {
+    // Get the current user's locations
+    final user = userController.userModel.value;
+    final locations = user?.locations ?? [];
+
+    Get.bottomSheet(
+      isScrollControlled: true,
+      Container(
+        padding: EdgeInsets.only(
+          left: Dimensions.width20,
+          right: Dimensions.width20,
+          top: Dimensions.height20,
+          bottom: Dimensions.height20,
+        ),
+        decoration: BoxDecoration(
+          color: AppColors.backgroundColor,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(Dimensions.radius20)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min, // Wrap content height
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // --- HEADER ---
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Select Delivery Location',
+                  style: TextStyle(
+                    fontSize: Dimensions.font18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                InkWell(
+                  onTap: () => Get.back(),
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.close, size: 20),
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: Dimensions.height20),
+
+            // --- VERTICAL LOCATIONS LIST ---
+            if (locations.isEmpty)
+              Padding(
+                padding: EdgeInsets.symmetric(vertical: Dimensions.height30),
+                child: Center(
+                  child: Text(
+                    "You have no saved locations.",
+                    style: TextStyle(color: AppColors.grey5, fontSize: 14),
+                  ),
+                ),
+              )
+            else
+              Flexible(
+                // Flexible ensures it scrolls if there are too many locations to fit on screen
+                child: SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  child: Column(
+                    children: locations.map((location) {
+                      return InkWell(
+                        onTap: () {
+                          orderController.setOrderLocation(
+                            orderId,
+                            location.label ?? '',
+                            location.lat ?? 0.0,
+                            location.lng ?? 0.0,
+                          );
+
+                          print('Selected: ${location.label} for Order: $orderId');
+                          Get.back(); // Close the bottom sheet after selection
+                        },
+                        child: Container(
+                          margin: EdgeInsets.only(bottom: Dimensions.height15),
+                          padding: const EdgeInsets.all(15),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(Dimensions.radius15),
+                            border: Border.all(color: Colors.grey.withOpacity(0.15)),
+                            boxShadow: [
+                              BoxShadow(
+                                  color: Colors.black.withOpacity(0.03),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4)
+                              )
+                            ],
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: AppColors.accentColor.withOpacity(0.1),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                    _getLocationIcon(location.label ?? ""),
+                                    color: AppColors.accentColor,
+                                    size: 24
+                                ),
+                              ),
+                              SizedBox(width: Dimensions.width15),
+                              Expanded(
+                                child: Text(
+                                  location.label ?? 'Location',
+                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                                ),
+                              ),
+                              const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
+                            ],
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ),
+
+            SizedBox(height: Dimensions.height10),
+
+            // --- ADD NEW LOCATION BUTTON ---
+            CustomButton(
+              text: 'Add New Location',
+              backgroundColor: AppColors.primaryColor,
+              icon: const Icon(Icons.add, color: Colors.white, size: 18),
+              onPressed: () {
+                Get.back(); // Close bottom sheet
+                Get.toNamed(AppRoutes.locationScreen); // Navigate to your location creation screen
+              },
+            ),
+            SizedBox(height: Dimensions.height50),
+
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -300,13 +439,7 @@ class _CustomerHomePageState extends State<CustomerHomePage> {
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                   ),
-                                  SizedBox(height: Dimensions.height5),
-                                  Text(
-                                    location.preciseLocation ?? '',
-                                    style: const TextStyle(fontSize: 10, color: Colors.grey),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
+
                                 ],
                               ),
                             );
@@ -349,10 +482,12 @@ class _CustomerHomePageState extends State<CustomerHomePage> {
                             padding: EdgeInsets.only(bottom: Dimensions.height15),
                             child: OrderCard(
                               orderId: order.orderNumber ?? "N/A",
-                              isLocationSet: locationIsSet,
                               itemCount: order.packageDescription ?? "Package",
-                              vendorName: order.rider?.name ?? 'Waiting for rider...',
+                              vendorName: order.rider?.name ?? 'Attach Your Location',
                               status: order.status ?? '',
+                              customerLocationPrecise: locationIsSet ? order.customerLocationLabel : null,
+                              deliveryPin: order.deliveryPin,
+
 
                               onSetLocationTap: () {
                                 if (!isOrdersLoading) _showLocationPicker(order.id ?? '');

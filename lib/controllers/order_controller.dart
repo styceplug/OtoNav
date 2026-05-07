@@ -28,7 +28,8 @@ class OrderController extends GetxController {
   StreamSubscription? _wsSub;
   StreamSubscription<Position>? _posSub;
   var isFetchingOrders = false.obs;
-
+  var activeAssignments = <OrderModel>[].obs;
+  var pendingWaitlist = <WaitlistModel>[].obs;
 
   @override
   void onInit() {
@@ -43,6 +44,88 @@ class OrderController extends GetxController {
     stopTracking();
     super.onClose();
   }
+
+  //VERIFIED RIDER
+  Future<void> fetchWaitlist() async {
+    isFetchingOrders.value = true;
+    Response response = await orderRepo.getPendingWaitlist();
+
+    if (response.statusCode == 200 && response.body['success'] == true) {
+      pendingWaitlist.clear();
+      List<dynamic> data = response.body['data'] ?? [];
+      for (var element in data) {
+        pendingWaitlist.add(WaitlistModel.fromJson(element));
+      }
+    } else {
+      print("Error fetching waitlist: ${response.statusText}");
+    }
+    isFetchingOrders.value = false;
+  }
+
+  Future<void> acceptWaitlistOrder(String waitlistId) async {
+    loader.showLoader();
+
+    try {
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          CustomSnackBar.failure(
+            message: "Location permissions are required to accept orders.",
+          );
+          loader.hideLoader();
+          return;
+        }
+      }
+
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+        timeLimit: const Duration(seconds: 10),
+      );
+
+      Response response = await orderRepo.acceptWaitlistOrder(
+        waitlistId,
+        position.latitude,
+        position.longitude,
+      );
+
+      if (response.statusCode == 200 && response.body['success'] == true) {
+        CustomSnackBar.success(message: "Order Accepted Successfully!");
+
+        pendingWaitlist.removeWhere((item) => item.id == waitlistId);
+
+        getOrders();
+      } else {
+        CustomSnackBar.failure(
+          message: response.body['message'] ?? "Failed to accept order",
+        );
+      }
+    } catch (e) {
+      CustomSnackBar.failure(
+        message: "Unable to lock GPS signal. Please try again.",
+      );
+    }
+
+    loader.hideLoader();
+  }
+
+  Future<void> fetchActiveAssignments() async {
+    isFetchingOrders.value = true;
+    Response response = await orderRepo.getActiveAssignments();
+
+    if (response.statusCode == 200 && response.body['success'] == true) {
+      activeAssignments.clear();
+      List<dynamic> data = response.body['data'] ?? [];
+      for (var element in data) {
+        activeAssignments.add(OrderModel.fromJson(element));
+      }
+    } else {
+      print("Error fetching active assignments: ${response.statusText}");
+    }
+    isFetchingOrders.value = false;
+  }
+
+  //
 
   LatLng? parseLatLng(String? s) {
     if (s == null || !s.contains(',')) return null;
@@ -61,7 +144,7 @@ class OrderController extends GetxController {
   }) {
     return Uri.parse(
       'wss://otonav-backend.onrender.com/ws'
-          '?orderId=$orderId&userId=$userId&role=$role',
+      '?orderId=$orderId&userId=$userId&role=$role',
     );
   }
 
@@ -98,7 +181,7 @@ class OrderController extends GetxController {
     _channel = IOWebSocketChannel.connect(url);
 
     _wsSub = _channel!.stream.listen(
-          (message) {
+      (message) {
         print("📩 WS: $message");
         _handleWsMessage(orderId, message);
       },
@@ -160,7 +243,9 @@ class OrderController extends GetxController {
     );
 
     _posSub?.cancel();
-    _posSub = Geolocator.getPositionStream(locationSettings: settings).listen((p) {
+    _posSub = Geolocator.getPositionStream(locationSettings: settings).listen((
+      p,
+    ) {
       final pos = LatLng(p.latitude, p.longitude);
       currentRiderLatLng.value = pos;
       update(); // ✅ CRITICAL FIX: rebuild marker on own GPS update too
@@ -170,7 +255,18 @@ class OrderController extends GetxController {
 
   Future<void> startCustomerTracking(String orderId) async {
     await getOrderDetails(orderId);
-    final userId = Get.find<UserController>().userModel.value!.id!;
+    UserController userController = Get.find<UserController>();
+
+    if (userController.userModel.value == null) {
+      await userController.getUserProfile();
+    }
+
+    final userId = userController.userModel.value?.id;
+    if (userId == null) {
+      print("⚠️ Cannot start tracking: User ID is null");
+      return;
+    }
+
     _connectWs(orderId: orderId, userId: userId, role: 'customer');
   }
 
@@ -179,7 +275,20 @@ class OrderController extends GetxController {
     if (!ok) return;
 
     await getOrderDetails(orderId);
-    final userId = Get.find<UserController>().userModel.value!.id!;
+
+    final userController = Get.find<UserController>();
+
+    if (userController.userModel.value == null) {
+      await userController.getUserProfile();
+    }
+
+    final userId = userController.userModel.value?.id;
+
+    if (userId == null) {
+      print("⚠️ Cannot start tracking: User ID is null");
+      return;
+    }
+
     _connectWs(orderId: orderId, userId: userId, role: 'rider');
     _startRiderStream();
   }
@@ -236,9 +345,9 @@ class OrderController extends GetxController {
     }
   }
 
-  Future<void> confirmDelivery(String orderId) async {
+  Future<void> confirmDelivery(String orderId, String deliveryPin) async {
     loader.showLoader();
-    final res = await orderRepo.confirmDelivery(orderId);
+    final res = await orderRepo.confirmDelivery(orderId, deliveryPin);
     loader.hideLoader();
 
     if (res.statusCode == 200 && res.body['success'] == true) {
@@ -247,7 +356,9 @@ class OrderController extends GetxController {
       Get.offAllNamed(AppRoutes.riderHomeScreen);
       appController.changeCurrentAppPage(0);
     } else {
-      CustomSnackBar.failure(message: res.body['message']);
+      CustomSnackBar.failure(
+        message: res.body['message'] ?? "Invalid PIN or failed to confirm",
+      );
     }
   }
 
@@ -323,13 +434,15 @@ class OrderController extends GetxController {
   }
 
   Future<void> setOrderLocation(
-      String orderId,
-      String label,
-      String preciseLocation,
-      ) async {
+    String orderId,
+    String label,
+    double lat,
+    double lng,
+  ) async {
     Map<String, dynamic> body = {
       "locationLabel": label,
-      "locationPrecise": preciseLocation,
+      "locationLat": lat,
+      "locationLng": lng,
     };
 
     loader.showLoader();
@@ -372,7 +485,7 @@ class OrderController extends GetxController {
   List<OrderModel> get pendingOrders {
     return _allOrders.where((order) {
       String s = order.status?.toLowerCase() ?? '';
-      return s == 'pending' || s == 'customer_location_set';
+      return s == 'pending' || s == '';
     }).toList();
   }
 
@@ -383,7 +496,9 @@ class OrderController extends GetxController {
           s == 'rider_accepted' ||
           s == 'package_picked_up' ||
           s == 'in_transit' ||
-          s == 'arrived_at_location';
+          s == 'arrived_at_location' ||
+          s == 'customer_location_set';
+      ;
     }).toList();
   }
 

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:intl/intl.dart';
+import 'package:otonav/routes/routes.dart';
 import 'package:skeletonizer/skeletonizer.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:otonav/controllers/order_controller.dart';
@@ -96,7 +97,9 @@ class _RiderHomePageState extends State<RiderHomePage> {
                         ],
                       ),
                       InkWell(
-                        onTap: () {},
+                        onTap: () {
+                          Get.toNamed(AppRoutes.notificationScreen);
+                        },
                         child: Container(
                           padding: EdgeInsets.all(Dimensions.width15),
                           decoration: const BoxDecoration(
@@ -240,7 +243,7 @@ class _RiderHomePageState extends State<RiderHomePage> {
                               status: order.status ?? 'pending',
                               businessName: order.organization?.name ?? 'Loading...',
                               customerName: order.customer?.name ?? 'Awaiting Info',
-                              customerLocationPrecise: order.customerLocationPrecise ?? 'Awaiting Location',
+                              customerLocationPrecise: order.customerLocationLabel ?? 'Awaiting Location',
                               customerLocationLabel: order.customerLocationLabel ?? '',
                               pickupLocation: order.organization?.address ?? 'Loading...',
 

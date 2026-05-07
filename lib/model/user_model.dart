@@ -49,13 +49,15 @@ class Data {
 
 class LocationModel {
   String? label;
-  String? preciseLocation;
+  double? lat;
+  double? lng;
 
-  LocationModel({this.label, this.preciseLocation});
+  LocationModel({this.label, this.lat, this.lng});
 
   LocationModel.fromJson(Map<String, dynamic> json) {
     label = json['label'];
-    preciseLocation = json['preciseLocation'];
+    lat = json['lat'] != null ? double.tryParse(json['lat'].toString()) : null;
+    lng = json['lng'] != null ? double.tryParse(json['lng'].toString()) : null;
   }
 }
 
@@ -99,38 +101,43 @@ class User {
   });
 
   User.fromJson(Map<String, dynamic> json) {
-    id = json['id'];
-    email = json['email'];
-    name = json['name'];
-    role = json['role'];
-    orgId = json['orgId'];
-    emailVerified = json['emailVerified'];
-    registrationCompleted =
-        json['registrationCompleted'] ??
-        json['isProfileComplete'];
-    phoneNumber = json['phoneNumber'];
-    createdAt = json['createdAt'];
-    currentLocation = json['currentLocation'];
-    isOtonavRecommended = json['isOtonavRecommended'];
-    averageRating = json['averageRating'];
-    isActive = json['isActive'] ?? '';
+    id = json['id']?.toString();
+    email = json['email']?.toString();
+    name = json['name']?.toString();
+    role = json['role']?.toString();
+    orgId = json['orgId']?.toString();
+    phoneNumber = json['phoneNumber']?.toString();
+    createdAt = json['createdAt']?.toString();
+    currentLocation = json['currentLocation']?.toString();
 
+    // --- SAFELY PARSE BOOLEANS ---
+    emailVerified = json['emailVerified'] == true;
+    isOtonavRecommended = json['isOtonavRecommended'] == true;
+
+    // If isActive is completely missing from the login payload, default to true
+    isActive = json['isActive'] ?? true;
+
+    // --- THE CRASH FIX ---
+    // The backend uses both boolean (isProfileComplete) and String (registrationStatus)
+    if (json['isProfileComplete'] != null && json['isProfileComplete'] is bool) {
+      registrationCompleted = json['isProfileComplete'];
+    } else {
+      registrationCompleted = json['registrationStatus'] == 'completed';
+    }
+
+    // --- PARSE NESTED OBJECTS ---
     if (json['jobAnalytics'] != null) {
       jobAnalytics = JobAnalytics.fromJson(json['jobAnalytics']);
     }
 
     if (json['locations'] != null) {
       locations = <LocationModel>[];
-      json['locations'].forEach((v) {
-        locations!.add(LocationModel.fromJson(v));
-      });
+      json['locations'].forEach((v) => locations!.add(LocationModel.fromJson(v)));
     }
 
     if (json['organizations'] != null) {
       organizations = <Map<String, dynamic>>[];
-      json['organizations'].forEach((v) {
-        organizations!.add(v);
-      });
+      json['organizations'].forEach((v) => organizations!.add(v));
     }
   }
 
@@ -148,7 +155,6 @@ class User {
 
 
 }
-
 
 class DailyBreakdown {
   DateTime? date;

@@ -86,17 +86,23 @@ class _RiderOrderPageState extends State<RiderOrderPage> {
                     ],
                   ),
                 ),
-                Container(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: Dimensions.width20,
-                    vertical: Dimensions.height20,
+                InkWell(
+                  onTap: (){
+                    Get.toNamed(AppRoutes.notificationScreen);
+                  },
+                  child: Container(
+                    padding: EdgeInsets.all(Dimensions.width15),
+                    decoration: const BoxDecoration(
+                      color: AppColors.cardColor,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Iconsax.notification,
+                    ),
                   ),
-                  decoration: const BoxDecoration(
-                    color: AppColors.cardColor,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Iconsax.notification),
                 ),
+
+
               ],
             ),
             SizedBox(height: Dimensions.height20),
@@ -154,7 +160,7 @@ class _RiderOrderPageState extends State<RiderOrderPage> {
                           status: order.status ?? '',
                           customerName: order.customer?.name ?? 'Customer Yet to Verify Data',
                           customerLocationLabel: order.customerLocationLabel ?? 'Customer Yet to Verify Data',
-                          customerLocationPrecise: order.customerLocationPrecise ?? 'Customer Yet to Verify Data',
+                          customerLocationPrecise: order.customerLocationLabel ?? 'Customer Yet to Verify Data',
                           businessName: order.organization?.name ?? 'Loading...',
                           pickupLocation: order.organization?.address ?? 'Loading...',
 

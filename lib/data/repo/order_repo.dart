@@ -7,7 +7,55 @@ class OrderRepo extends GetxService {
 
   OrderRepo({required this.apiClient});
 
+  //Verified Riders
 
+
+  Future<Response> getActiveAssignments() async {
+    return await apiClient.getData(AppConstants.GET_ACTIVE_ASSIGNMENTS_URI);
+  }
+
+  Future<Response> getPendingWaitlist() async {
+    return await apiClient.getData(AppConstants.GET_WAITLIST);
+  }
+
+  Future<Response> acceptWaitlistOrder(
+    String waitlistId,
+    double lat,
+    double lng,
+  ) async {
+    return await apiClient.postData(
+      AppConstants.ACCEPT_ORDER_ON_WAITLIST(waitlistId),
+      {
+        "currentLocation": {"lat": lat, "lng": lng},
+      },
+    );
+  }
+
+  Future<Response> updateOrderStatus(
+    String orderId,
+    String status,
+    String timestampField,
+  ) async {
+    return await apiClient.putData(
+      AppConstants.UPDATE_VERIFIED_ORDER_STATUS(orderId),
+      {"status": status, "timestampField": timestampField},
+    );
+  }
+
+  Future<Response> updateOrderLocation(
+    String orderId,
+    double lat,
+    double lng,
+  ) async {
+    return await apiClient.postData(
+      AppConstants.UPDATE_VERIFIED_RIDER_LOCATION(orderId),
+      {
+        "currentLocation": {"lat": lat, "lng": lng},
+      },
+    );
+  }
+
+  //
 
   Future<Response> getOrderDetails(String orderId) async {
     return await apiClient.getData(AppConstants.GET_SINGLE_ORDER(orderId));
@@ -34,10 +82,12 @@ class OrderRepo extends GetxService {
     );
   }
 
-  Future<Response> confirmDelivery(String orderId) async {
+  Future<Response> confirmDelivery(String orderId, String pin) async {
     return await apiClient.postData(
       AppConstants.POST_CONFIRM_DELIVERY(orderId),
-      {},
+      {
+        "pin":pin
+      },
     );
   }
 

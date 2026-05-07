@@ -9,6 +9,7 @@ import 'package:otonav/utils/app_constants.dart';
 import 'package:otonav/utils/colors.dart';
 import 'package:otonav/utils/dimensions.dart';
 
+import '../../../../routes/routes.dart';
 import '../../../in_app/riders/rider_analytics_page.dart';
 
 class RiderProfilePage extends StatefulWidget {
@@ -121,11 +122,22 @@ class _RiderProfilePageState extends State<RiderProfilePage> {
                           ],
                         ),
                       ),
-                      Container(
-                        padding: EdgeInsets.all(Dimensions.width15),
-                        decoration: const BoxDecoration(color: AppColors.cardColor, shape: BoxShape.circle),
-                        child: const Icon(Iconsax.notification),
+                      InkWell(
+                        onTap: (){
+                          Get.toNamed(AppRoutes.notificationScreen);
+                        },
+                        child: Container(
+                          padding: EdgeInsets.all(Dimensions.width15),
+                          decoration: const BoxDecoration(
+                            color: AppColors.cardColor,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Iconsax.notification,
+                          ),
+                        ),
                       ),
+
                     ],
                   ),
                   SizedBox(height: Dimensions.height30),

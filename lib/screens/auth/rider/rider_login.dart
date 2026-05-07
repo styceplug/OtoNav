@@ -69,6 +69,7 @@ class _RiderLoginScreenState extends State<RiderLoginScreen> {
                 hintText: 'abc@gmail.com',
                 controller: authController.emailController,
                 keyboardType: TextInputType.emailAddress,
+                maxLines: 1,
               ),
               SizedBox(height: Dimensions.height20),
               Text('Password', style: TextStyle(fontSize: Dimensions.font17)),

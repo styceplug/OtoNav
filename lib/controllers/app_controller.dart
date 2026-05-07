@@ -8,13 +8,16 @@ import 'package:get/get.dart';
 import 'package:otonav/controllers/user_controller.dart';
 import 'package:otonav/data/api/api_client.dart';
 import 'package:otonav/data/repo/auth_repo.dart';
+import 'package:otonav/screens/pages/rider_pages/screens/active_assignments.dart';
 import 'package:otonav/screens/pages/rider_pages/screens/rider_home_page.dart';
 import 'package:otonav/screens/pages/rider_pages/screens/rider_profile_page.dart';
+import 'package:otonav/screens/pages/rider_pages/screens/waitlist_screen.dart';
 import 'package:otonav/screens/pages/user_pages/screens/orders.dart';
 import 'package:otonav/screens/pages/user_pages/screens/profile.dart';
 import 'package:otonav/widgets/snackbars.dart';
 
 import '../data/repo/app_repo.dart';
+import '../model/notification_model.dart';
 import '../routes/routes.dart';
 import '../screens/pages/rider_pages/screens/rider_order.dart';
 import '../screens/pages/user_pages/screens/home.dart';
@@ -40,20 +43,89 @@ class AppController extends GetxController {
   var currentAppPage = 0.obs;
   var isFirstTime = false.obs;
   PageController pageController = PageController();
-
+  var notifications = <NotificationModel>[].obs;
+  var unreadCount = 0.obs;
+  var isLoading = false.obs;
   final List<Widget> customerPages = [
     CustomerHomePage(),
     CustomerOrdersPage(),
     CustomerProfilePage(),
   ];
 
-  final List<Widget> riderPages = [RiderHomePage(), RiderOrderPage(), RiderProfilePage()];
+  final List<Widget> riderPages = [
+    RiderHomePage(),
+    RiderOrderPage(),
+    RiderProfilePage(),
+    WaitlistScreen(),
+    ActiveAssignments()
+  ];
 
   @override
   void onInit() {
     // initializeApp();
     super.onInit();
   }
+
+  //NOTIFICATIONS
+  Future<void> fetchNotifications() async {
+    isLoading.value = true;
+    Response response = await appRepo.getAllNotification();
+
+    if (response.statusCode == 200 && response.body['success'] == true) {
+      notifications.clear();
+      List<dynamic> data = response.body['data'] ?? [];
+
+      for (var element in data) {
+        notifications.add(NotificationModel.fromJson(element));
+      }
+
+
+      final rawCount = response.body['unreadCount'];
+      unreadCount.value = int.tryParse(rawCount.toString()) ?? 0;
+
+    } else {
+      print("Failed to fetch notifications: ${response.statusText}");
+    }
+
+    isLoading.value = false;
+  }
+
+  Future<void> markAsRead(String id) async {
+    int index = notifications.indexWhere((n) => n.id == id);
+    if (index != -1 && notifications[index].read == false) {
+      notifications[index].read = true;
+      if (unreadCount.value > 0) unreadCount.value--;
+      notifications.refresh();
+
+      Response response = await appRepo.markAsRead(id);
+
+      if (response.statusCode != 200 || response.body['success'] != true) {
+        notifications[index].read = false;
+        unreadCount.value++;
+        notifications.refresh();
+      }
+    }
+  }
+
+  Future<void> markAllAsRead() async {
+    if (unreadCount.value == 0) return;
+
+    for (var n in notifications) {
+      n.read = true;
+    }
+    int previousUnreadCount = unreadCount.value;
+    unreadCount.value = 0;
+    notifications.refresh();
+
+    Response response = await appRepo.markAllAsRead();
+
+    if (response.statusCode != 200 || response.body['success'] != true) {
+      fetchNotifications();
+      CustomSnackBar.failure(message: "Failed to mark notifications as read");
+    }
+  }
+
+  //
 
   Future<void> initializeApp() async {
     print('Initializing App...');
@@ -77,6 +149,7 @@ class AppController extends GetxController {
       // 2. VERIFY TOKEN with Backend
       print("🔄 Verifying Session...");
       Response profileResponse = await authRepo.getProfile();
+      saveDeviceToken();
 
       if (profileResponse.statusCode == 200) {
         print("✅ Session Valid");
@@ -141,7 +214,6 @@ class AppController extends GetxController {
     try {
       FirebaseMessaging messaging = FirebaseMessaging.instance;
 
-      // 1. Request Permission
       NotificationSettings settings = await messaging.requestPermission(
         alert: true,
         badge: true,
@@ -161,7 +233,7 @@ class AppController extends GetxController {
             print(
               "❌ APNs Token is null. Are you on a Simulator? Push won't work.",
             );
-            return; // Stop here to prevent the crash
+            return;
           }
         }
 
@@ -189,7 +261,7 @@ class AppController extends GetxController {
   Future<void> checkFirstTimeUse() async {
     final prefs = appRepo.sharedPreferences;
     bool hasSeen = prefs.getBool('hasSeenOnboarding') ?? false;
-
+    // saveDeviceToken();
     if (!hasSeen) {
       isFirstTime.value = true;
       await prefs.setBool('hasSeenOnboarding', true);
