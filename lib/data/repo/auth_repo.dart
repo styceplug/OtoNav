@@ -10,6 +10,11 @@ class AuthRepo extends GetConnect {
   AuthRepo({required this.apiClient});
 
 
+  Future<Response> deleteUserProfile()async{
+    return await apiClient.deleteData(AppConstants.DELETE_ACCOUNT);
+  }
+
+
   //CUSTOMER SPECIFIC
   Future<Response> deleteSavedLocation(String label) async {
     return await apiClient.deleteData(

@@ -10,6 +10,7 @@ class AppConstants {
   static const String refreshToken = 'refresh_token';
 
 
+  static const String DELETE_ACCOUNT = '/api/auth/account';
   static const String POST_LOGIN = '/api/auth/login';
   static const String POST_REGISTER_CUSTOMER = '/api/auth/register/customer';
   static const String POST_FORGOT_PASSWORD = '/api/auth/forgot-password';
