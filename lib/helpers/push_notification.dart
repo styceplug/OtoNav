@@ -6,6 +6,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:get/get.dart';
 import 'package:otonav/controllers/app_controller.dart';
+import 'package:otonav/widgets/snackbars.dart';
 
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tzData;
@@ -60,6 +61,34 @@ class NotificationService {
     await _initPushNotifications();
   }
 
+  Future<bool> requestNotificationPermission() async {
+    FirebaseMessaging messaging = FirebaseMessaging.instance;
+
+    // Request permission from the user (iOS triggers a popup, Android 13+ triggers a popup)
+    NotificationSettings settings = await messaging.requestPermission(
+      alert: true,
+      announcement: false,
+      badge: true,
+      carPlay: false,
+      criticalAlert: false,
+      provisional: false, // Set to true if you want silent notifications initially
+      sound: true,
+    );
+
+    if (settings.authorizationStatus == AuthorizationStatus.authorized) {
+      print('✅ User granted permission');
+      CustomSnackBar.success(message: "Notification permission granted");
+      return true;
+    } else if (settings.authorizationStatus == AuthorizationStatus.provisional) {
+      print('✅ User granted provisional permission');
+      CustomSnackBar.success(message: "Notification permission granted");
+      return true;
+    } else {
+      print('⚠️ User declined or has not accepted permission');
+      return false;
+    }
+  }
+
   Future<void> _initPushNotifications() async {
     final settings = await _fcm.requestPermission(
       alert: true,
@@ -106,20 +135,48 @@ class NotificationService {
   }
 
   /// Call this after login too (and it’s safe to call multiple times)
+
+
   Future<void> syncTokenToServer({String? tokenOverride}) async {
-    final token = tokenOverride ?? await _fcm.getToken();
-    if (token == null) return;
+    String? token = tokenOverride;
 
     try {
-      // This should call POST /users/fcm-token with auth header
+      if (token == null) {
+        // ✅ 1. Wait for APNs token on iOS FIRST
+        if (Platform.isIOS) {
+          String? apnsToken = await _fcm.getAPNSToken();
+
+          // Wait up to 3 seconds for the APNs token if it's not immediately available
+          int retries = 0;
+          while (apnsToken == null && retries < 3) {
+            await Future.delayed(const Duration(seconds: 1));
+            apnsToken = await _fcm.getAPNSToken();
+            retries++;
+          }
+
+          if (apnsToken == null) {
+            print("⚠️ APNs token not received. Cannot fetch FCM token.");
+            return;
+          }
+        }
+
+        // ✅ 2. Now it is safe to request the FCM token
+        token = await _fcm.getToken();
+      }
+
+      if (token == null) return;
+
+      // ✅ 3. Sync to backend
       final userController = Get.find<UserController>();
       final appController = Get.find<AppController>();
       await appController.saveDeviceToken();
-      print("✅ Token synced to backend");
+      print("✅ Token synced to backend: $token");
+
     } catch (e) {
-      print("⚠️ Could not sync token now (user not ready/logged out): $e");
+      print("⚠️ Could not sync token now: $e");
     }
   }
+
 
   Future<void> showRemoteNotification(
     RemoteNotification notification,
