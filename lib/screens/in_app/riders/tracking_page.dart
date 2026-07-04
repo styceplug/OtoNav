@@ -281,6 +281,58 @@ class _RiderTrackingPageState extends State<RiderTrackingPage> with TickerProvid
     );
   }
 
+  double _calculateDistance(LatLng p1, LatLng p2) {
+    const R = 6371e3;
+    final lat1 = p1.latitude * math.pi / 180;
+    final lat2 = p2.latitude * math.pi / 180;
+    final deltaLat = (p2.latitude - p1.latitude) * math.pi / 180;
+    final deltaLng = (p2.longitude - p1.longitude) * math.pi / 180;
+
+    final a = math.sin(deltaLat / 2) * math.sin(deltaLat / 2) +
+        math.cos(lat1) * math.cos(lat2) *
+            math.sin(deltaLng / 2) * math.sin(deltaLng / 2);
+    final c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a));
+
+    return R * c;
+  }
+
+  void _showProximityOverrideDialog(String orderId) {
+    Get.dialog(
+      AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: const [
+            Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 28),
+            SizedBox(width: 10),
+            Text("Not at location?"),
+          ],
+        ),
+        content: const Text(
+          "Your GPS shows you are still far from the delivery destination. Are you sure you want to mark this as arrived?",
+          style: TextStyle(height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Get.back(),
+            child: const Text("Cancel", style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.orange,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () {
+              Get.back(); // Close dialog
+              Get.find<OrderController>().markArrived(orderId); // Force the action
+            },
+            child: const Text("Yes, I'm here", style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+
   @override
   Widget build(BuildContext context) {
     final controller = Get.find<OrderController>();
@@ -459,14 +511,30 @@ class _RiderTrackingPageState extends State<RiderTrackingPage> with TickerProvid
                           onPressed: () async {
                             final id = order.id!;
 
-                            // Map the button tap to the correct API call
                             if (status == 'confirmed' || status == 'rider_accepted') {
                               await ctrl.markPackagePickedUp(id);
-                            } else if (status == 'package_picked_up') {
+                            }
+                            else if (status == 'package_picked_up') {
                               await ctrl.startDelivery(id);
-                            } else if (status == 'in_transit') {
-                              await ctrl.markArrived(id);
-                            } else if (status == 'arrived_at_location') {
+                            }
+                            else if (status == 'in_transit') {
+                              // ✅ The Radius Check Logic
+                              if (_interpolatedPos != null && _destinationLatLng != null) {
+                                double distanceInMeters = _calculateDistance(_interpolatedPos!, _destinationLatLng!);
+
+                                // Set your radius here (e.g., 150 meters)
+                                if (distanceInMeters > 150) {
+                                  _showProximityOverrideDialog(id);
+                                } else {
+                                  // They are close enough, proceed normally
+                                  await ctrl.markArrived(id);
+                                }
+                              } else {
+                                // Fallback if GPS is glitching
+                                await ctrl.markArrived(id);
+                              }
+                            }
+                            else if (status == 'arrived_at_location') {
                               // ✅ FIRE THE PIN VERIFICATION UI
                               _showPinVerificationSheet(id);
                             }

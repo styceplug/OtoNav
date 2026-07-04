@@ -32,7 +32,7 @@ class _CustomerTrackingPageState extends State<CustomerTrackingPage> with Ticker
   List<LatLng> _routePoints = [];
   String _distance = '';
   String _duration = '';
-  int _stopsAway = 0; // Tracking Junctions/Stops
+  int _stopsAway = 0;
 
   bool _isDestLoaded = false;
   bool _isMapReady = false;
@@ -182,11 +182,10 @@ class _CustomerTrackingPageState extends State<CustomerTrackingPage> with Ticker
     );
   }
 
-  // Formatting the stops away text
   String get _stopsText {
     if (_stopsAway <= 0) return "Arriving shortly";
-    if (_stopsAway > 9) return "9+ junctions away";
-    return "$_stopsAway junction${_stopsAway > 1 ? 's' : ''} away";
+    if (_stopsAway == 1) return "1 stop away";
+    return "$_stopsAway stops away";
   }
 
   @override
