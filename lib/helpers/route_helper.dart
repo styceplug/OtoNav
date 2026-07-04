@@ -4,10 +4,8 @@ import 'package:latlong2/latlong.dart';
 class OSMHelper {
   final Dio _dio = Dio();
 
-  // 1. FREE ROUTING (OSRM)
   Future<Map<String, dynamic>?> getRoute(LatLng start, LatLng end) async {
     try {
-      // Added &steps=true to the URL
       final url = 'http://router.project-osrm.org/route/v1/driving/${start.longitude},${start.latitude};${end.longitude},${end.latitude}?overview=full&geometries=geojson&steps=true';
 
       final response = await _dio.get(url);
@@ -20,16 +18,24 @@ class OSMHelper {
             .map((e) => LatLng(e[1].toDouble(), e[0].toDouble()))
             .toList();
 
-        // Parse Turn-by-Turn Instructions & Stops Away
         String instruction = "Head to destination";
         String stepDistance = "";
-        int stopsAway = 0; // NEW VARIABLE
+        int majorStopsAway = 0; // ✅ The new intelligent counter
 
         if (route['legs'].isNotEmpty && route['legs'][0]['steps'].isNotEmpty) {
           final steps = route['legs'][0]['steps'] as List;
 
-          // Calculate Stops/Junctions (Total steps minus the final "Arrive" step)
-          stopsAway = steps.length > 1 ? steps.length - 1 : 0;
+          // ✅ INTELLIGENT JUNCTION FILTER
+          // Instead of counting every tiny bend, we only count significant turns.
+          for (var step in steps) {
+            String roadName = step['name'] ?? '';
+            double dist = (step['distance'] ?? 0).toDouble();
+
+            // Only count if it's a named road AND the rider will be on it for more than 200 meters.
+            if ( dist > 200) {
+              majorStopsAway++;
+            }
+          }
 
           if (steps.length > 1) {
             final nextStep = steps[1];
@@ -57,10 +63,8 @@ class OSMHelper {
           'duration': _formatDuration(route['duration']),
           'instruction': instruction,
           'stepDistance': stepDistance,
-          'stops': stopsAway, // RETURN STOPS AWAY
+          'stops': majorStopsAway, // ✅ Return the filtered major stops
         };
-
-
       }
     } catch (e) {
       print("OSRM Error: $e");
@@ -68,7 +72,6 @@ class OSMHelper {
     return null;
   }
 
-  // 2. FREE GEOCODING (Nominatim)
   Future<LatLng?> getCoordinatesFromAddress(String address) async {
     try {
       final url = 'https://nominatim.openstreetmap.org/search';
@@ -82,7 +85,6 @@ class OSMHelper {
         },
         options: Options(
           headers: {
-            // REQUIRED: Nominatim requires a User-Agent identifying your app
             'User-Agent': 'OtoNav_App_1.0',
           },
         ),
