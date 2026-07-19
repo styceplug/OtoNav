@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:otonav/screens/auth/customer/create_account.dart';
 import 'package:otonav/screens/auth/customer/login_screen.dart';
@@ -24,7 +23,6 @@ import '../model/order_model.dart';
 import '../screens/pages/user_pages/user_home_screen.dart';
 import '../screens/splash/splash_screen.dart';
 import '../web_pages/account_deletion.dart';
-import '../widgets/snackbars.dart';
 
 class AppRoutes {
   //general
@@ -54,51 +52,50 @@ class AppRoutes {
   static const String locationScreen = '/location-screen';
   static const String customerTrackingScreen = '/customer-tracking-screen';
 
-
   //rider
   static const String riderHomeScreen = '/rider-home-screen';
   static const String riderTrackingScreen = '/rider-tracking-screen';
   static const String orderCompletedPage = '/order-completed-page';
 
-
-
-
   static final routes = [
-
-
     GetPage(
       name: privacyPolicy,
       page: () {
         return const PrivacyPolicyPage();
-      },),
+      },
+    ),
     GetPage(
       name: accountDeletion,
       page: () {
         return const AccountDeletionRequestPage();
-      },),
-
+      },
+    ),
 
     //customer
     GetPage(
       name: customerHomeScreen,
       page: () {
         return const UserHomeScreen();
-      },),
+      },
+    ),
     GetPage(
       name: customerProfilePage,
       page: () {
         return const CustomerProfilePage();
-      },),
+      },
+    ),
     GetPage(
       name: customerOrdersPage,
       page: () {
         return const CustomerOrdersPage();
-      },),
+      },
+    ),
     GetPage(
       name: locationScreen,
       page: () {
         return LocationScreen();
-      },),
+      },
+    ),
     GetPage(
       name: customerTrackingScreen, // Define constant
       page: () {
@@ -107,33 +104,37 @@ class AppRoutes {
       },
     ),
 
-
     //rider
     GetPage(
       name: riderHomeScreen,
       page: () {
         return const RiderHomeScreen();
-      },),
+      },
+    ),
     GetPage(
       name: riderTrackingScreen,
       page: () {
-
         var args = Get.arguments;
-        String id = (args is OrderModel) ? args.id! : args.toString();
+        bool isVerified = false;
+        String id;
 
-        return RiderTrackingPage(orderId: id);
+        if (args is Map) {
+          final order = args['order'];
+          id = (order is OrderModel) ? order.id! : args['orderId'].toString();
+          isVerified = args['isVerified'] == true;
+        } else {
+          id = (args is OrderModel) ? args.id! : args.toString();
+        }
+
+        return RiderTrackingPage(orderId: id, isVerified: isVerified);
       },
     ),
     GetPage(
       name: orderCompletedPage,
       page: () {
         return const OrderCompleted();
-      },),
-
-
-
-
-
+      },
+    ),
 
     //auth
     GetPage(
@@ -172,8 +173,6 @@ class AppRoutes {
         return EditProfileScreen();
       },
     ),
-
-
 
     //general
     GetPage(

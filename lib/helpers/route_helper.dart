@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:latlong2/latlong.dart';
 
 class OSMHelper {
@@ -6,7 +7,8 @@ class OSMHelper {
 
   Future<Map<String, dynamic>?> getRoute(LatLng start, LatLng end) async {
     try {
-      final url = 'http://router.project-osrm.org/route/v1/driving/${start.longitude},${start.latitude};${end.longitude},${end.latitude}?overview=full&geometries=geojson&steps=true';
+      final url =
+          'http://router.project-osrm.org/route/v1/driving/${start.longitude},${start.latitude};${end.longitude},${end.latitude}?overview=full&geometries=geojson&steps=true';
 
       final response = await _dio.get(url);
 
@@ -28,17 +30,23 @@ class OSMHelper {
           // ✅ INTELLIGENT JUNCTION FILTER
           // Instead of counting every tiny bend, we only count significant turns.
           for (var step in steps) {
-            String roadName = step['name'] ?? '';
             double dist = (step['distance'] ?? 0).toDouble();
 
             // Only count if it's a named road AND the rider will be on it for more than 200 meters.
-            if ( dist > 200) {
+            if (dist > 200) {
               majorStopsAway++;
             }
           }
 
+          final nextStep = steps
+              .skip(1)
+              .cast<Map>()
+              .firstWhere(
+                (step) => ((step['distance'] ?? 0) as num).toDouble() > 15,
+                orElse: () => steps.length > 1 ? steps[1] : steps[0],
+              );
+
           if (steps.length > 1) {
-            final nextStep = steps[1];
             final modifier = nextStep['maneuver']['modifier'] ?? '';
             final type = nextStep['maneuver']['type'] ?? '';
 
@@ -50,7 +58,8 @@ class OSMHelper {
             } else if (type.isNotEmpty) {
               instruction = "$type on $name";
             }
-            stepDistance = _formatDistance(nextStep['distance']);
+            final distance = (nextStep['distance'] ?? 0) as num;
+            stepDistance = distance > 15 ? _formatDistance(distance) : "";
           } else if (steps.length == 1) {
             instruction = "Arrive at destination";
             stepDistance = _formatDistance(steps[0]['distance']);
@@ -67,7 +76,7 @@ class OSMHelper {
         };
       }
     } catch (e) {
-      print("OSRM Error: $e");
+      debugPrint("OSRM Error: $e");
     }
     return null;
   }
@@ -78,27 +87,16 @@ class OSMHelper {
 
       final response = await _dio.get(
         url,
-        queryParameters: {
-          'q': address,
-          'format': 'json',
-          'limit': 1,
-        },
-        options: Options(
-          headers: {
-            'User-Agent': 'OtoNav_App_1.0',
-          },
-        ),
+        queryParameters: {'q': address, 'format': 'json', 'limit': 1},
+        options: Options(headers: {'User-Agent': 'OtoNav_App_1.0'}),
       );
 
       if (response.statusCode == 200 && (response.data as List).isNotEmpty) {
         final data = response.data[0];
-        return LatLng(
-          double.parse(data['lat']),
-          double.parse(data['lon']),
-        );
+        return LatLng(double.parse(data['lat']), double.parse(data['lon']));
       }
     } catch (e) {
-      print("Nominatim Error: $e");
+      debugPrint("Nominatim Error: $e");
     }
     return null;
   }
@@ -109,16 +107,8 @@ class OSMHelper {
 
       final response = await _dio.get(
         url,
-        queryParameters: {
-          'lat': lat,
-          'lon': lng,
-          'format': 'json',
-        },
-        options: Options(
-          headers: {
-            'User-Agent': 'OtoNav_App_1.0',
-          },
-        ),
+        queryParameters: {'lat': lat, 'lon': lng, 'format': 'json'},
+        options: Options(headers: {'User-Agent': 'OtoNav_App_1.0'}),
       );
 
       if (response.statusCode == 200 && response.data != null) {
@@ -126,7 +116,7 @@ class OSMHelper {
         return response.data['display_name'];
       }
     } catch (e) {
-      print("Nominatim Reverse Geo Error: $e");
+      debugPrint("Nominatim Reverse Geo Error: $e");
     }
     return null;
   }
