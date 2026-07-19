@@ -36,6 +36,8 @@
 	<string>This app needs access to location when in the background.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>This app needs access to location when open to save delivery addresses.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>This app needs camera access to let you take profile photos, scan codes, or capture delivery confirmation images.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>This app needs access to your photo library to let you upload a profile picture or delivery confirmation.</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>

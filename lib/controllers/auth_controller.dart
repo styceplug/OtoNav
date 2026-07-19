@@ -175,11 +175,11 @@ class AuthController extends GetxController {
     }
   }
 
-  Future<void> registerCustomer() async {
+  Future<void> registerCustomer({String dialCode = '+234'}) async {
     String name = nameController.text.trim();
     String email = emailController.text.trim();
     String password = passwordController.text.trim();
-    String phoneNumber = phoneController.text.trim();
+    String phoneNumber = _formatPhoneNumber(phoneController.text, dialCode);
 
     if (name.isEmpty ||
         email.isEmpty ||
@@ -211,6 +211,28 @@ class AuthController extends GetxController {
       String errorMsg = _getErrorMessage(response);
       CustomSnackBar.failure(message: errorMsg);
     }
+  }
+
+  String _formatPhoneNumber(String value, String dialCode) {
+    final raw = value.trim();
+    if (raw.isEmpty) return '';
+
+    final countryCode = dialCode.replaceAll(RegExp(r'\D'), '');
+    var digits = raw.replaceAll(RegExp(r'\D'), '');
+
+    if (raw.startsWith('+') && digits.startsWith(countryCode)) {
+      return digits;
+    }
+
+    if (digits.startsWith(countryCode)) {
+      digits = digits.substring(countryCode.length);
+    }
+
+    while (digits.startsWith('0')) {
+      digits = digits.substring(1);
+    }
+
+    return '$countryCode$digits';
   }
 
   Future<void> login() async {

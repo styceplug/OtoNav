@@ -19,6 +19,16 @@ class CustomerCreateAccount extends StatefulWidget {
 class _CustomerCreateAccountState extends State<CustomerCreateAccount> {
   AuthController authController = Get.find<AuthController>();
   bool isPasswordVisible = false;
+  String _selectedDialCode = '+234';
+
+  final List<Map<String, String>> _dialCodes = const [
+    {'country': 'Nigeria', 'flag': '🇳🇬', 'code': '+234'},
+    {'country': 'Ghana', 'flag': '🇬🇭', 'code': '+233'},
+    {'country': 'Kenya', 'flag': '🇰🇪', 'code': '+254'},
+    {'country': 'South Africa', 'flag': '🇿🇦', 'code': '+27'},
+    {'country': 'United Kingdom', 'flag': '🇬🇧', 'code': '+44'},
+    {'country': 'United States', 'flag': '🇺🇸', 'code': '+1'},
+  ];
 
   void togglePassVisibility() {
     setState(() {
@@ -88,9 +98,48 @@ class _CustomerCreateAccountState extends State<CustomerCreateAccount> {
                 style: TextStyle(fontSize: Dimensions.font17),
               ),
               SizedBox(height: Dimensions.height5),
-              CustomTextField(
-                hintText: '2348012345678',
-                controller: authController.phoneController,
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    height: 56,
+                    padding: EdgeInsets.symmetric(
+                      horizontal: Dimensions.width10,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.cardColor.withValues(alpha: 0.7),
+                      borderRadius: BorderRadius.circular(Dimensions.radius10),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: _selectedDialCode,
+                        icon: const Icon(Icons.keyboard_arrow_down),
+                        items: _dialCodes.map((item) {
+                          final code = item['code']!;
+                          return DropdownMenuItem<String>(
+                            value: code,
+                            child: Text(
+                              '${item['flag']} $code',
+                              style: const TextStyle(fontFamily: 'Poppins'),
+                            ),
+                          );
+                        }).toList(),
+                        onChanged: (value) {
+                          if (value == null) return;
+                          setState(() => _selectedDialCode = value);
+                        },
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: Dimensions.width10),
+                  Expanded(
+                    child: CustomTextField(
+                      hintText: '8012345678',
+                      controller: authController.phoneController,
+                      keyboardType: TextInputType.phone,
+                    ),
+                  ),
+                ],
               ),
               SizedBox(height: Dimensions.height20),
               Text('Password', style: TextStyle(fontSize: Dimensions.font17)),
@@ -110,7 +159,7 @@ class _CustomerCreateAccountState extends State<CustomerCreateAccount> {
               SizedBox(height: Dimensions.height20),
               CustomButton(
                 onPressed: () {
-                  authController.registerCustomer();
+                  authController.registerCustomer(dialCode: _selectedDialCode);
                 },
                 text: 'CREATE ACCOUNT',
               ),
