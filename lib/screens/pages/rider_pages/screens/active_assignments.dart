@@ -27,7 +27,7 @@ class _ActiveAssignmentsState extends State<ActiveAssignments> {
   // --- DUMMY DATA FOR SKELETONIZER ---
   final List<OrderModel> _dummyData = List.generate(
     3,
-        (index) => OrderModel(
+    (index) => OrderModel(
       orderNumber: "ORDXXXXXX",
       packageDescription: "Loading assignment details...",
       status: "in_transit",
@@ -66,16 +66,30 @@ class _ActiveAssignmentsState extends State<ActiveAssignments> {
                     children: [
                       Row(
                         children: [
-                          Text('Active Assignments', style: TextStyle(fontSize: Dimensions.font22, fontWeight: FontWeight.bold)),
+                          Text(
+                            'Active Assignments',
+                            style: TextStyle(
+                              fontSize: Dimensions.font22,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                           SizedBox(width: Dimensions.width5),
-                          const Icon(Icons.verified, color: Colors.blue, size: 22),
+                          const Icon(
+                            Icons.verified,
+                            color: Colors.blue,
+                            size: 22,
+                          ),
                         ],
                       ),
                       Text(
                         'Manage your ongoing verified deliveries',
                         overflow: TextOverflow.ellipsis,
                         maxLines: 1,
-                        style: TextStyle(fontSize: Dimensions.font14, fontWeight: FontWeight.w400, color: AppColors.grey5),
+                        style: TextStyle(
+                          fontSize: Dimensions.font14,
+                          fontWeight: FontWeight.w400,
+                          color: AppColors.grey5,
+                        ),
                       ),
                     ],
                   ),
@@ -93,7 +107,6 @@ class _ActiveAssignmentsState extends State<ActiveAssignments> {
                     child: const Icon(Iconsax.notification),
                   ),
                 ),
-
               ],
             ),
             SizedBox(height: Dimensions.height20),
@@ -101,8 +114,12 @@ class _ActiveAssignmentsState extends State<ActiveAssignments> {
             // --- ORDER LIST ---
             Expanded(
               child: Obx(() {
-                final bool isLoading = _waitlistController.isFetchingOrders.value && _waitlistController.activeAssignments.isEmpty;
-                final List<OrderModel> displayData = isLoading ? _dummyData : _waitlistController.activeAssignments;
+                final bool isLoading =
+                    _waitlistController.isFetchingOrders.value &&
+                    _waitlistController.activeAssignments.isEmpty;
+                final List<OrderModel> displayData = isLoading
+                    ? _dummyData
+                    : _waitlistController.activeAssignments;
 
                 if (!isLoading && displayData.isEmpty) {
                   return Center(
@@ -128,16 +145,25 @@ class _ActiveAssignmentsState extends State<ActiveAssignments> {
                           orderId: order.orderNumber ?? "N/A",
                           itemCount: order.packageDescription ?? "Package",
                           status: order.status ?? 'pending',
-                          businessName: order.organization?.name ?? 'Loading...',
-                          customerName: order.customer?.name ?? 'Loading Customer...',
-                          customerLocationPrecise: order.customerLocationLabel ?? 'Loading Location...',
-                          customerLocationLabel: order.customerLocationLabel ?? '',
-                          pickupLocation: order.organization?.address ?? 'Loading...',
+                          businessName:
+                              order.organization?.name ?? 'Loading...',
+                          customerName:
+                              order.customer?.name ?? 'Loading Customer...',
+                          customerLocationPrecise:
+                              order.customerLocationLabel ??
+                              'Loading Location...',
+                          customerLocationLabel:
+                              order.customerLocationLabel ?? '',
+                          pickupLocation:
+                              order.organization?.address ?? 'Loading...',
 
                           // --- ACTIONS ---
                           onStartDeliveryTap: () {
                             if (!isLoading && order.id != null) {
-                              _orderController.acceptOrder(order.id!);
+                              Get.toNamed(
+                                AppRoutes.riderTrackingScreen,
+                                arguments: {'order': order, 'isVerified': true},
+                              );
                             }
                           },
                           onCancelDeliveryTap: () {
@@ -146,24 +172,45 @@ class _ActiveAssignmentsState extends State<ActiveAssignments> {
                             }
                           },
                           onTrackOrderTap: () {
-                            if (!isLoading) {
-                              // Navigate to tracking screen for this assignment
-                              // Get.toNamed(AppRoutes.riderTrackingScreen, arguments: order);
+                            if (!isLoading && order.id != null) {
+                              Get.toNamed(
+                                AppRoutes.riderTrackingScreen,
+                                arguments: {'order': order, 'isVerified': true},
+                              );
                             }
                           },
                           onCallCustomerTap: () async {
                             if (isLoading) return;
-                            String? phone = order.customer?.phoneNumber ?? order.rider?.phoneNumber; // Fallbacks depending on your data
+                            String? phone =
+                                order.customer?.phoneNumber ??
+                                order
+                                    .rider
+                                    ?.phoneNumber; // Fallbacks depending on your data
                             if (phone != null && phone.isNotEmpty) {
-                              String cleanPhone = phone.replaceAll(RegExp(r'[^\d+]'), '');
-                              final Uri launchUri = Uri(scheme: 'tel', path: cleanPhone);
+                              String cleanPhone = phone.replaceAll(
+                                RegExp(r'[^\d+]'),
+                                '',
+                              );
+                              final Uri launchUri = Uri(
+                                scheme: 'tel',
+                                path: cleanPhone,
+                              );
                               try {
-                                if (!await launchUrl(launchUri, mode: LaunchMode.platformDefault)) throw 'Could not launch $launchUri';
+                                if (!await launchUrl(
+                                  launchUri,
+                                  mode: LaunchMode.platformDefault,
+                                ))
+                                  throw 'Could not launch $launchUri';
                               } catch (e) {
-                                CustomSnackBar.failure(message: "Unable to make call on this device.");
+                                CustomSnackBar.failure(
+                                  message:
+                                      "Unable to make call on this device.",
+                                );
                               }
                             } else {
-                              CustomSnackBar.failure(message: "Phone number not available.");
+                              CustomSnackBar.failure(
+                                message: "Phone number not available.",
+                              );
                             }
                           },
                         ),

@@ -1,7 +1,7 @@
 class AppConstants {
   static const String APP_NAME = "OtoNav";
   static const String VERSION = "1.0.0";
-  
+
   static const String BASE_URL = 'https://otonav-backend.onrender.com';
 
   //TOKEN
@@ -9,59 +9,67 @@ class AppConstants {
   static const String userRole = 'user_role';
   static const String refreshToken = 'refresh_token';
 
-
   static const String DELETE_ACCOUNT = '/api/auth/account';
   static const String POST_LOGIN = '/api/auth/login';
   static const String POST_REGISTER_CUSTOMER = '/api/auth/register/customer';
   static const String POST_FORGOT_PASSWORD = '/api/auth/forgot-password';
-  static const String POST_VERIFY_OTP= '/api/auth/verify-email';
-  static const String POST_RESEND_OTP= '/api/auth/resend-otp';
+  static const String POST_VERIFY_OTP = '/api/auth/verify-email';
+  static const String POST_RESEND_OTP = '/api/auth/resend-otp';
   static const String GET_PROFILE = '/api/auth/profile';
   static const String PUT_PROFILE_UPDATE = '/api/auth/profile';
   static const String REFRESH_TOKEN = '/api/auth/refresh-token';
   static const String POST_FCM_TOKEN = '/api/users/fcm-token';
   static const String TOGGLE_RIDER_AVAILABILITY = '/api/riders/toggle-activity';
 
-
-
   static const String GET_ORDERS_LIST = '/api/orders';
 
-  static String POST_SET_LOCATION (String orderId) => '/api/orders/$orderId/set-location';
-  static String GET_LOCATION_LABELS (String orderId) => '/api/orders/$orderId/set-location';
-  static String POST_RIDER_ACCEPT_DELIVERY (String orderId) => '/api/orders/$orderId/accept';
-  static String POST_RIDER_DECLINE_DELIVERY (String orderId) => '/api/orders/$orderId/cancel';
+  static String POST_SET_LOCATION(String orderId) =>
+      '/api/orders/$orderId/set-location';
+  static String GET_CUSTOMER_LOCATION_LABELS(String customerId) =>
+      '/api/orders/$customerId/customer-location-labels';
+  static String POST_RATE_ORDER(String orderId) => '/api/orders/$orderId/rate';
+  static String POST_RIDER_ACCEPT_DELIVERY(String orderId) =>
+      '/api/orders/$orderId/accept';
+  static String POST_RIDER_UPDATE_LOCATION(String orderId) =>
+      '/api/orders/$orderId/update-location';
+  static String POST_RIDER_DECLINE_DELIVERY(String orderId) =>
+      '/api/orders/$orderId/cancel';
 
-
-  static String POST_PACKAGE_PICKED_UP(String id) => '/api/orders/$id/package-picked-up';
-  static String POST_START_DELIVERY(String id) => '/api/orders/$id/start-delivery';
+  static String POST_PACKAGE_PICKED_UP(String id) =>
+      '/api/orders/$id/package-picked-up';
+  static String POST_START_DELIVERY(String id) =>
+      '/api/orders/$id/start-delivery';
   static String POST_MARK_ARRIVED(String id) => '/api/orders/$id/mark-arrived';
-  static String POST_CONFIRM_DELIVERY(String id) => '/api/orders/$id/confirm-delivery';
+  static String POST_CONFIRM_DELIVERY(String id) =>
+      '/api/orders/$id/confirm-delivery';
   static String GET_SINGLE_ORDER(String id) => '/api/orders/$id';
 
-
-  static String DELETE_SAVED_LOCATION(String label) => '/api/customers/profile/locations/$label';
-
+  static String DELETE_SAVED_LOCATION(String label) =>
+      '/api/customers/profile/locations/$label';
 
   static const String GET_WAITLIST = '/api/verified-riders/waitlist/pending';
-  static String ACCEPT_ORDER_ON_WAITLIST(String id) => '/api/verified-riders/waitlist/$id/accept';
-  static String UPDATE_VERIFIED_ORDER_STATUS(String id) => '/api/verified-riders/orders/$id/status';
-  static String UPDATE_VERIFIED_RIDER_LOCATION(String id) => '/api/verified-riders/orders/$id/location';
+  static String ACCEPT_ORDER_ON_WAITLIST(String id) =>
+      '/api/verified-riders/waitlist/$id/accept';
+  static String UPDATE_VERIFIED_ORDER_STATUS(String id) =>
+      '/api/verified-riders/orders/$id/status';
+  static String UPDATE_VERIFIED_RIDER_LOCATION(String id) =>
+      '/api/verified-riders/orders/$id/location';
+  static const String TOGGLE_VERIFIED_RIDER_ACTIVITY =
+      '/api/verified-riders/toggle-activity';
 
-  static const String GET_ACTIVE_ASSIGNMENTS_URI = '/api/verified-riders/assignments/active';
-
+  static const String GET_ACTIVE_ASSIGNMENTS_URI =
+      '/api/verified-riders/assignments/active';
 
   static const String GET_NOTIFICATIONS = '/api/notifications';
-  static const String MARK_ALL_NOTIFICATIONS_AS_READ = '/api/notifications/read-all';
-  static String MARK_SINGLE_NOTIFICATION_AS_READ(String id) => '/api/notifications/$id/read';
-
-
-
-
-
+  static const String MARK_ALL_NOTIFICATIONS_AS_READ =
+      '/api/notifications/read-all';
+  static String MARK_SINGLE_NOTIFICATION_AS_READ(String id) =>
+      '/api/notifications/$id/read';
 
   static String getPngAsset(String image) {
     return 'assets/images/$image.png';
   }
+
   static String getGifAsset(String image) {
     return 'assets/gifs/$image.gif';
   }
