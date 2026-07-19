@@ -1,6 +1,5 @@
 import '../model/user_model.dart';
 
-
 class OrderModel {
   String? id;
   String? orderNumber;
@@ -8,7 +7,9 @@ class OrderModel {
   String? packageDescription;
   String? customerId;
   String? riderId;
-  String? riderCurrentLocation;
+  dynamic riderCurrentLocation;
+  double? riderCurrentLat;
+  double? riderCurrentLng;
   String? customerLocationLabel;
   double? customerLocationLat;
   double? customerLocationLng;
@@ -19,17 +20,17 @@ class OrderModel {
   String? assignedAt;
   String? riderAcceptedAt;
   String? customerLocationSetAt;
-  String? packagePickedUpAt;      // New
-  String? deliveryStartedAt;      // New
-  String? arrivedAtLocationAt;    // New
+  String? packagePickedUpAt; // New
+  String? deliveryStartedAt; // New
+  String? arrivedAtLocationAt; // New
   String? deliveredAt;
   String? cancelledAt;
   String? createdAt;
   String? updatedAt;
 
   // Cancellation Details
-  String? cancelledBy;            // New
-  String? cancellationReason;     // New
+  String? cancelledBy; // New
+  String? cancellationReason; // New
 
   // Nested Objects
   OrderUser? customer;
@@ -44,6 +45,8 @@ class OrderModel {
     this.customerId,
     this.riderId,
     this.riderCurrentLocation,
+    this.riderCurrentLat,
+    this.riderCurrentLng,
     this.customerLocationLabel,
     this.customerLocationLat,
     this.customerLocationLng,
@@ -74,9 +77,12 @@ class OrderModel {
     customerId = json['customerId'];
     riderId = json['riderId'];
     riderCurrentLocation = json['riderCurrentLocation'];
+    riderCurrentLat = _parseDouble(json['riderCurrentLat']);
+    riderCurrentLng = _parseDouble(json['riderCurrentLng']);
     customerLocationLabel = json['customerLocationLabel'];
-    customerLocationLat = json['customerLocationLat'] != null ? double.tryParse(json['customerLocationLat'].toString()) : null;
-    customerLocationLng = json['customerLocationLng'] != null ? double.tryParse(json['customerLocationLng'].toString()) : null;    status = json['status'];
+    customerLocationLat = _parseDouble(json['customerLocationLat']);
+    customerLocationLng = _parseDouble(json['customerLocationLng']);
+    status = json['status'];
     deliveryPin = json['deliveryPin']?.toString();
     // Dates
     assignedAt = json['assignedAt'];
@@ -95,9 +101,19 @@ class OrderModel {
     cancellationReason = json['cancellationReason'];
 
     // Parse Nested Objects
-    customer = json['customer'] != null ? OrderUser.fromJson(json['customer']) : null;
+    customer = json['customer'] != null
+        ? OrderUser.fromJson(json['customer'])
+        : null;
     rider = json['rider'] != null ? OrderUser.fromJson(json['rider']) : null;
-    organization = json['organization'] != null ? OrganizationModel.fromJson(json['organization']) : null;
+    organization = json['organization'] != null
+        ? OrganizationModel.fromJson(json['organization'])
+        : null;
+  }
+
+  static double? _parseDouble(dynamic value) {
+    if (value == null) return null;
+    if (value is num) return value.toDouble();
+    return double.tryParse(value.toString());
   }
 }
 
@@ -174,13 +190,23 @@ class WaitlistModel {
   DateTime? createdAt;
   OrderModel? order;
 
-  WaitlistModel({this.id, this.status, this.expiresAt, this.createdAt, this.order});
+  WaitlistModel({
+    this.id,
+    this.status,
+    this.expiresAt,
+    this.createdAt,
+    this.order,
+  });
 
   WaitlistModel.fromJson(Map<String, dynamic> json) {
     id = json['id']?.toString();
     status = json['status']?.toString();
-    expiresAt = json['expiresAt'] != null ? DateTime.tryParse(json['expiresAt']) : null;
-    createdAt = json['createdAt'] != null ? DateTime.tryParse(json['createdAt']) : null;
+    expiresAt = json['expiresAt'] != null
+        ? DateTime.tryParse(json['expiresAt'])
+        : null;
+    createdAt = json['createdAt'] != null
+        ? DateTime.tryParse(json['createdAt'])
+        : null;
 
     if (json['order'] != null) {
       // ✅ THE FIX: Merge the root-level organization and customer into the order JSON

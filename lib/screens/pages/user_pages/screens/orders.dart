@@ -29,7 +29,7 @@ class _CustomerOrdersPageState extends State<CustomerOrdersPage> {
   // --- DUMMY DATA FOR SKELETONIZER ---
   final List<OrderModel> _dummyOrders = List.generate(
     3,
-        (index) => OrderModel(
+    (index) => OrderModel(
       id: "dummy_id_$index",
       orderNumber: "ORD999999999",
       packageDescription: "Loading Package Description...",
@@ -85,7 +85,7 @@ class _CustomerOrdersPageState extends State<CustomerOrdersPage> {
                   ),
                 ),
                 InkWell(
-                  onTap: (){
+                  onTap: () {
                     Get.toNamed(AppRoutes.notificationScreen);
                   },
                   child: Container(
@@ -94,12 +94,9 @@ class _CustomerOrdersPageState extends State<CustomerOrdersPage> {
                       color: AppColors.cardColor,
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(
-                      Iconsax.notification,
-                    ),
+                    child: const Icon(Iconsax.notification),
                   ),
                 ),
-
               ],
             ),
             SizedBox(height: Dimensions.height20),
@@ -129,10 +126,14 @@ class _CustomerOrdersPageState extends State<CustomerOrdersPage> {
                 }
 
                 // Check if currently fetching data and the list is empty
-                final bool isLoading = orderController.isFetchingOrders.value && ordersToShow.isEmpty;
+                final bool isLoading =
+                    orderController.isFetchingOrders.value &&
+                    ordersToShow.isEmpty;
 
                 // Use dummy data if loading, otherwise use actual data
-                final List<OrderModel> displayOrders = isLoading ? _dummyOrders : ordersToShow;
+                final List<OrderModel> displayOrders = isLoading
+                    ? _dummyOrders
+                    : ordersToShow;
 
                 if (!isLoading && displayOrders.isEmpty) {
                   return Center(
@@ -150,8 +151,10 @@ class _CustomerOrdersPageState extends State<CustomerOrdersPage> {
                     itemCount: displayOrders.length,
                     itemBuilder: (context, index) {
                       var order = displayOrders[index];
-                      bool locationIsSet = order.status == 'customer_location_set' ||
-                          (order.customerLocationLabel != null && order.customerLocationLabel!.isNotEmpty);
+                      bool locationIsSet =
+                          order.status == 'customer_location_set' ||
+                          (order.customerLocationLabel != null &&
+                              order.customerLocationLabel!.isNotEmpty);
 
                       return Padding(
                         padding: EdgeInsets.only(bottom: Dimensions.height15),
@@ -160,14 +163,22 @@ class _CustomerOrdersPageState extends State<CustomerOrdersPage> {
                           orderId: order.orderNumber ?? "N/A",
                           itemCount: order.packageDescription ?? "Items",
                           vendorName: order.rider?.name ?? 'Assigning rider...',
-                          customerLocationPrecise: locationIsSet ? order.customerLocationLabel : null,
+                          customerLocationPrecise: locationIsSet
+                              ? order.customerLocationLabel
+                              : null,
                           deliveryPin: order.deliveryPin,
                           onFetchPin: () async {
-                            final res = await orderController.orderRepo.getOrderDetails(order.id!);
-                            if (res.statusCode == 200 && res.body['success'] == true) {
-                              return res.body['data']['deliveryPin']?.toString();
+                            final res = await orderController.orderRepo
+                                .getOrderDetails(order.id!);
+                            if (res.statusCode == 200 &&
+                                res.body['success'] == true) {
+                              return res.body['data']['deliveryPin']
+                                  ?.toString();
                             } else {
-                              CustomSnackBar.failure(message: "Failed to fetch PIN. Please try again.");
+                              CustomSnackBar.failure(
+                                message:
+                                    "Failed to fetch PIN. Please try again.",
+                              );
                               return null;
                             }
                           },
@@ -184,23 +195,39 @@ class _CustomerOrdersPageState extends State<CustomerOrdersPage> {
                               );
                             }
                           },
-                            onCallVendorTap: () async {
-                              String? phone = order.rider?.phoneNumber;
-                              if (phone != null && phone.isNotEmpty) {
-                                String cleanPhone = phone.replaceAll(RegExp(r'[^\d+]'), '');
-                                final Uri launchUri = Uri(scheme: 'tel', path: cleanPhone);
-                                try {
-                                  if (!await launchUrl(launchUri, mode: LaunchMode.platformDefault)) throw 'Could not launch $launchUri';
-                                } catch (e) {
-                                  CustomSnackBar.failure(message: "Unable to make call on this device.");
-                                }
-                              } else {
-                                CustomSnackBar.failure(message: "Phone number not available.");
+                          onCallVendorTap: () async {
+                            String? phone = order.rider?.phoneNumber;
+                            if (phone != null && phone.isNotEmpty) {
+                              String cleanPhone = phone.replaceAll(
+                                RegExp(r'[^\d+]'),
+                                '',
+                              );
+                              final Uri launchUri = Uri(
+                                scheme: 'tel',
+                                path: cleanPhone,
+                              );
+                              try {
+                                if (!await launchUrl(
+                                  launchUri,
+                                  mode: LaunchMode.platformDefault,
+                                ))
+                                  throw 'Could not launch $launchUri';
+                              } catch (e) {
+                                CustomSnackBar.failure(
+                                  message:
+                                      "Unable to make call on this device.",
+                                );
                               }
-                            },
+                            } else {
+                              CustomSnackBar.failure(
+                                message: "Phone number not available.",
+                              );
+                            }
+                          },
 
                           onRateDeliveryTap: () {
-                            if (!isLoading) _showRatingModal(context, order.id!);
+                            if (!isLoading)
+                              _showRatingModal(context, order.id!);
                           },
                         ),
                       );
@@ -231,7 +258,9 @@ class _CustomerOrdersPageState extends State<CustomerOrdersPage> {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(Dimensions.radius10),
           color: isSelected ? AppColors.accentColor : AppColors.white,
-          border: isSelected ? null : Border.all(color: Colors.grey.withOpacity(0.3)),
+          border: isSelected
+              ? null
+              : Border.all(color: Colors.grey.withOpacity(0.3)),
         ),
         child: Text(
           text,
@@ -245,45 +274,96 @@ class _CustomerOrdersPageState extends State<CustomerOrdersPage> {
   }
 
   void _showRatingModal(BuildContext context, String orderId) {
+    int selectedRating = 5;
+    final reviewController = TextEditingController();
+
     Get.bottomSheet(
-      Container(
-        padding: const EdgeInsets.all(20),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 40, height: 5,
-              decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(10)),
+      StatefulBuilder(
+        builder: (context, setModalState) {
+          return Container(
+            padding: EdgeInsets.only(
+              left: 20,
+              right: 20,
+              top: 20,
+              bottom: MediaQuery.of(context).viewInsets.bottom + 20,
             ),
-            const SizedBox(height: 20),
-            const Text("Rate your Experience", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 10),
-            const Text("How was the delivery experience?", style: TextStyle(color: Colors.grey)),
-            const SizedBox(height: 30),
-
-            // Star Rating Row (Simple visual placeholder)
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(5, (index) => const Icon(Iconsax.star1, color: Colors.amber, size: 36)),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
             ),
-
-            const SizedBox(height: 30),
-            CustomButton(
-              text: "Submit Feedback",
-              backgroundColor: AppColors.primaryColor,
-              onPressed: () {
-                // TODO: Call API to rate order
-                Get.back();
-                CustomSnackBar.success(message: "Thanks for your feedback!");
-              },
-            )
-          ],
-        ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 40,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                const Text(
+                  "Rate your Experience",
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 10),
+                const Text(
+                  "How was the delivery experience?",
+                  style: TextStyle(color: Colors.grey),
+                ),
+                const SizedBox(height: 30),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(5, (index) {
+                    final value = index + 1;
+                    final isSelected = value <= selectedRating;
+                    return IconButton(
+                      onPressed: () {
+                        setModalState(() => selectedRating = value);
+                      },
+                      icon: Icon(
+                        isSelected ? Iconsax.star1 : Iconsax.star,
+                        color: Colors.amber,
+                        size: 36,
+                      ),
+                    );
+                  }),
+                ),
+                const SizedBox(height: 20),
+                TextField(
+                  controller: reviewController,
+                  maxLength: 500,
+                  maxLines: 3,
+                  decoration: InputDecoration(
+                    hintText: "Add a short review (optional)",
+                    filled: true,
+                    fillColor: Colors.grey[100],
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                CustomButton(
+                  text: "Submit Feedback",
+                  backgroundColor: AppColors.primaryColor,
+                  onPressed: () async {
+                    final success = await orderController.rateOrder(
+                      orderId,
+                      selectedRating,
+                      review: reviewController.text,
+                    );
+                    if (success) Get.back();
+                  },
+                ),
+              ],
+            ),
+          );
+        },
       ),
+      isScrollControlled: true,
     );
   }
 }

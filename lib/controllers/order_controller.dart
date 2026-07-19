@@ -27,6 +27,7 @@ class OrderController extends GetxController {
   WebSocketChannel? _channel;
   StreamSubscription? _wsSub;
   StreamSubscription<Position>? _posSub;
+  DateTime? _lastHttpLocationUpdate;
   var isFetchingOrders = false.obs;
   var activeAssignments = <OrderModel>[].obs;
   var pendingWaitlist = <WaitlistModel>[].obs;
@@ -127,7 +128,22 @@ class OrderController extends GetxController {
 
   //
 
-  LatLng? parseLatLng(String? s) {
+  LatLng? parseLatLng(dynamic value) {
+    if (value is Map) {
+      final rawCoords = value['coords'];
+      if (rawCoords != null) return parseLatLng(rawCoords);
+
+      final lat = value['lat'];
+      final lng = value['lng'];
+      final parsedLat = lat is num ? lat.toDouble() : double.tryParse('$lat');
+      final parsedLng = lng is num ? lng.toDouble() : double.tryParse('$lng');
+      if (parsedLat != null && parsedLng != null) {
+        return LatLng(parsedLat, parsedLng);
+      }
+      return null;
+    }
+
+    final s = value?.toString();
     if (s == null || !s.contains(',')) return null;
     final parts = s.split(',');
     if (parts.length < 2) return null;
@@ -155,7 +171,10 @@ class OrderController extends GetxController {
       final order = OrderModel.fromJson(res.body['data']);
       trackingOrder.value = order;
 
-      final rider = parseLatLng(order.riderCurrentLocation);
+      final rider =
+          (order.riderCurrentLat != null && order.riderCurrentLng != null)
+          ? LatLng(order.riderCurrentLat!, order.riderCurrentLng!)
+          : parseLatLng(order.riderCurrentLocation);
       if (rider != null) {
         currentRiderLatLng.value = rider;
       }
@@ -197,7 +216,7 @@ class OrderController extends GetxController {
       if (data is! Map) return;
 
       if (data['type'] == 'location_update') {
-        final rider = parseLatLng(data['location']);
+        final rider = parseLatLng(data['coords'] ?? data['location']);
         if (rider != null) {
           currentRiderLatLng.value = rider;
           update(); // ✅ CRITICAL FIX: tell GetBuilder to rebuild the marker
@@ -216,9 +235,44 @@ class OrderController extends GetxController {
 
   void _sendCoords(LatLng pos) {
     if (_channel == null) return;
-    final payload = jsonEncode({"coords": "${pos.latitude},${pos.longitude}"});
+    final payload = jsonEncode({
+      "coords": {"lat": pos.latitude, "lng": pos.longitude},
+    });
     _channel!.sink.add(payload);
     print("📤 WS SEND -> $payload");
+  }
+
+  Future<void> _syncRiderLocation(
+    String orderId,
+    LatLng pos, {
+    required bool isVerified,
+  }) async {
+    final now = DateTime.now();
+    if (_lastHttpLocationUpdate != null &&
+        now.difference(_lastHttpLocationUpdate!) <
+            const Duration(seconds: 20)) {
+      return;
+    }
+
+    _lastHttpLocationUpdate = now;
+
+    try {
+      if (isVerified) {
+        await orderRepo.updateOrderLocation(
+          orderId,
+          pos.latitude,
+          pos.longitude,
+        );
+      } else {
+        await orderRepo.updateRiderLocation(
+          orderId,
+          pos.latitude,
+          pos.longitude,
+        );
+      }
+    } catch (e) {
+      print("⚠️ HTTP location update failed: $e");
+    }
   }
 
   Future<bool> _ensureLocationPermission() async {
@@ -236,7 +290,7 @@ class OrderController extends GetxController {
     return true;
   }
 
-  void _startRiderStream() {
+  void _startRiderStream(String orderId, {required bool isVerified}) {
     const settings = LocationSettings(
       accuracy: LocationAccuracy.high,
       distanceFilter: 5, // ✅ reduced from 10 → 5m for more frequent updates
@@ -250,6 +304,7 @@ class OrderController extends GetxController {
       currentRiderLatLng.value = pos;
       update(); // ✅ CRITICAL FIX: rebuild marker on own GPS update too
       _sendCoords(pos);
+      _syncRiderLocation(orderId, pos, isVerified: isVerified);
     });
   }
 
@@ -270,7 +325,10 @@ class OrderController extends GetxController {
     _connectWs(orderId: orderId, userId: userId, role: 'customer');
   }
 
-  Future<void> startRiderTracking(String orderId) async {
+  Future<void> startRiderTracking(
+    String orderId, {
+    bool isVerified = false,
+  }) async {
     final ok = await _ensureLocationPermission();
     if (!ok) return;
 
@@ -290,7 +348,7 @@ class OrderController extends GetxController {
     }
 
     _connectWs(orderId: orderId, userId: userId, role: 'rider');
-    _startRiderStream();
+    _startRiderStream(orderId, isVerified: isVerified);
   }
 
   void stopTracking() {
@@ -319,9 +377,57 @@ class OrderController extends GetxController {
     }
   }
 
+  Future<Response> _updateVerifiedStatus(
+    String orderId,
+    String status,
+    String? timestampField, {
+    String? pin,
+  }) {
+    return orderRepo.updateOrderStatus(
+      orderId,
+      status,
+      timestampField,
+      pin: pin,
+    );
+  }
+
+  Future<void> markVerifiedPackagePickedUp(String orderId) async {
+    loader.showLoader();
+    final res = await _updateVerifiedStatus(
+      orderId,
+      'package_picked_up',
+      'packagePickedUpAt',
+    );
+    loader.hideLoader();
+
+    if (res.statusCode == 200 && res.body['success'] == true) {
+      await getOrderDetails(orderId);
+      CustomSnackBar.success(message: "Package picked up.");
+    } else {
+      CustomSnackBar.failure(message: res.body['message']);
+    }
+  }
+
   Future<void> startDelivery(String orderId) async {
     loader.showLoader();
     final res = await orderRepo.startDelivery(orderId);
+    loader.hideLoader();
+
+    if (res.statusCode == 200 && res.body['success'] == true) {
+      await getOrderDetails(orderId);
+      CustomSnackBar.success(message: "Trip started.");
+    } else {
+      CustomSnackBar.failure(message: res.body['message']);
+    }
+  }
+
+  Future<void> startVerifiedDelivery(String orderId) async {
+    loader.showLoader();
+    final res = await _updateVerifiedStatus(
+      orderId,
+      'in_transit',
+      'deliveryStartedAt',
+    );
     loader.hideLoader();
 
     if (res.statusCode == 200 && res.body['success'] == true) {
@@ -345,9 +451,51 @@ class OrderController extends GetxController {
     }
   }
 
+  Future<void> markVerifiedArrived(String orderId) async {
+    loader.showLoader();
+    final res = await _updateVerifiedStatus(
+      orderId,
+      'arrived_at_location',
+      'arrivedAtLocationAt',
+    );
+    loader.hideLoader();
+
+    if (res.statusCode == 200 && res.body['success'] == true) {
+      await getOrderDetails(orderId);
+      CustomSnackBar.success(message: "Arrived at location.");
+    } else {
+      CustomSnackBar.failure(message: res.body['message']);
+    }
+  }
+
   Future<void> confirmDelivery(String orderId, String deliveryPin) async {
     loader.showLoader();
     final res = await orderRepo.confirmDelivery(orderId, deliveryPin);
+    loader.hideLoader();
+
+    if (res.statusCode == 200 && res.body['success'] == true) {
+      stopTracking();
+      CustomSnackBar.success(message: "Delivery confirmed!");
+      Get.offAllNamed(AppRoutes.riderHomeScreen);
+      appController.changeCurrentAppPage(0);
+    } else {
+      CustomSnackBar.failure(
+        message: res.body['message'] ?? "Invalid PIN or failed to confirm",
+      );
+    }
+  }
+
+  Future<void> confirmVerifiedDelivery(
+    String orderId,
+    String deliveryPin,
+  ) async {
+    loader.showLoader();
+    final res = await _updateVerifiedStatus(
+      orderId,
+      'delivered',
+      'deliveredAt',
+      pin: deliveryPin,
+    );
     loader.hideLoader();
 
     if (res.statusCode == 200 && res.body['success'] == true) {
@@ -389,9 +537,11 @@ class OrderController extends GetxController {
       Position position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
       );
-      String locationString = "${position.latitude},${position.longitude}";
-
-      Response response = await orderRepo.acceptOrder(orderId, locationString);
+      Response response = await orderRepo.acceptOrder(
+        orderId,
+        position.latitude,
+        position.longitude,
+      );
 
       if (response.statusCode == 200 && response.body['success'] == true) {
         CustomSnackBar.success(
@@ -441,8 +591,8 @@ class OrderController extends GetxController {
   ) async {
     Map<String, dynamic> body = {
       "locationLabel": label,
-      "locationLat": lat,
-      "locationLng": lng,
+      "lat": lat,
+      "lng": lng,
     };
 
     loader.showLoader();
@@ -462,6 +612,23 @@ class OrderController extends GetxController {
 
     loader.hideLoader();
     update();
+  }
+
+  Future<bool> rateOrder(String orderId, int rating, {String? review}) async {
+    loader.showLoader();
+    final response = await orderRepo.rateOrder(orderId, rating, review: review);
+    loader.hideLoader();
+
+    if (response.statusCode == 200) {
+      await getOrders();
+      CustomSnackBar.success(message: "Thanks for your feedback!");
+      return true;
+    }
+
+    CustomSnackBar.failure(
+      message: response.body['message'] ?? "Failed to submit rating",
+    );
+    return false;
   }
 
   Future<void> getOrders() async {
@@ -498,7 +665,6 @@ class OrderController extends GetxController {
           s == 'in_transit' ||
           s == 'arrived_at_location' ||
           s == 'customer_location_set';
-      ;
     }).toList();
   }
 

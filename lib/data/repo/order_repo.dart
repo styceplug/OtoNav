@@ -9,7 +9,6 @@ class OrderRepo extends GetxService {
 
   //Verified Riders
 
-
   Future<Response> getActiveAssignments() async {
     return await apiClient.getData(AppConstants.GET_ACTIVE_ASSIGNMENTS_URI);
   }
@@ -25,20 +24,23 @@ class OrderRepo extends GetxService {
   ) async {
     return await apiClient.postData(
       AppConstants.ACCEPT_ORDER_ON_WAITLIST(waitlistId),
-      {
-        "currentLocation": {"lat": lat, "lng": lng},
-      },
+      {"lat": lat, "lng": lng},
     );
   }
 
   Future<Response> updateOrderStatus(
     String orderId,
     String status,
-    String timestampField,
-  ) async {
+    String? timestampField, {
+    String? pin,
+  }) async {
+    final body = <String, dynamic>{"status": status};
+    if (timestampField != null) body["timestampField"] = timestampField;
+    if (pin != null) body["pin"] = pin;
+
     return await apiClient.putData(
       AppConstants.UPDATE_VERIFIED_ORDER_STATUS(orderId),
-      {"status": status, "timestampField": timestampField},
+      body,
     );
   }
 
@@ -49,9 +51,7 @@ class OrderRepo extends GetxService {
   ) async {
     return await apiClient.postData(
       AppConstants.UPDATE_VERIFIED_RIDER_LOCATION(orderId),
-      {
-        "currentLocation": {"lat": lat, "lng": lng},
-      },
+      {"lat": lat, "lng": lng},
     );
   }
 
@@ -85,16 +85,41 @@ class OrderRepo extends GetxService {
   Future<Response> confirmDelivery(String orderId, String pin) async {
     return await apiClient.postData(
       AppConstants.POST_CONFIRM_DELIVERY(orderId),
-      {
-        "pin":pin
-      },
+      {"pin": pin},
     );
   }
 
-  Future<Response> acceptOrder(String orderId, String currentLocation) async {
+  Future<Response> rateOrder(
+    String orderId,
+    int rating, {
+    String? review,
+  }) async {
+    final body = <String, dynamic>{"rating": rating};
+    if (review != null && review.trim().isNotEmpty) {
+      body["review"] = review.trim();
+    }
+
+    return await apiClient.postData(
+      AppConstants.POST_RATE_ORDER(orderId),
+      body,
+    );
+  }
+
+  Future<Response> acceptOrder(String orderId, double lat, double lng) async {
     return await apiClient.postData(
       AppConstants.POST_RIDER_ACCEPT_DELIVERY(orderId),
-      {"currentLocation": currentLocation},
+      {"lat": lat, "lng": lng},
+    );
+  }
+
+  Future<Response> updateRiderLocation(
+    String orderId,
+    double lat,
+    double lng,
+  ) async {
+    return await apiClient.postData(
+      AppConstants.POST_RIDER_UPDATE_LOCATION(orderId),
+      {"lat": lat, "lng": lng},
     );
   }
 
@@ -106,6 +131,12 @@ class OrderRepo extends GetxService {
 
   Future<Response> getOrders() async {
     return await apiClient.getData(AppConstants.GET_ORDERS_LIST);
+  }
+
+  Future<Response> getCustomerLocationLabels(String customerId) async {
+    return await apiClient.getData(
+      AppConstants.GET_CUSTOMER_LOCATION_LABELS(customerId),
+    );
   }
 
   Future<Response> setCustomerLocation(
